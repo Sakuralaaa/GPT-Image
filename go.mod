@@ -8,6 +8,7 @@ require (
 	github.com/enetx/surf v1.0.199
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/lib/pq v1.10.9
+	golang.org/x/crypto v0.41.0
 	modernc.org/sqlite v1.40.1
 )
 
@@ -28,7 +29,6 @@ require (
 	github.com/refraction-networking/utls v1.8.3-0.20260301010127-aa6edf4b11af // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/wzshiming/socks5 v0.7.0 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/image v0.24.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
