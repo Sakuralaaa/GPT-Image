@@ -26,7 +26,8 @@
 ### 修复
 
 - `codex-gpt-image-2` 在网页通道映射到自身导致 prepare 拿不到 conduit token，现映射为 `auto`。
-- `deploy/docker-compose.yml` 默认镜像改为 `ghcr.io/sakuralaaa/gptchat2api-cf:latest`。
+- `deploy/docker-compose.yml` 默认镜像改为 `ghcr.io/sakuralaaa/gpt-image:latest`。
+- 仓库更名为 `Sakuralaaa/GPT-Image`，镜像改为 `ghcr.io/sakuralaaa/gpt-image`（solver 为 `gpt-image-sentinel-solver`），CI 将仓库名转小写作为镜像名。
 - `sentinel_solver/Dockerfile` 按 `TARGETARCH` 下载对应架构的 gost。
 
 ### 修复（此前）

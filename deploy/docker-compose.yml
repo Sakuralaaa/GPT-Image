@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${CHATGPT2API_IMAGE:-ghcr.io/sakuralaaa/gptchat2api-cf:latest}
+    image: ${CHATGPT2API_IMAGE:-ghcr.io/sakuralaaa/gpt-image:latest}
     pull_policy: ${CHATGPT2API_PULL_POLICY:-always}
     container_name: gpt-image
     restart: unless-stopped
