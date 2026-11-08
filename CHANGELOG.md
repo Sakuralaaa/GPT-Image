@@ -3,9 +3,11 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-08
+
 ### 变更（破坏性）
 
-- 产品更名为 **GPT Image**（面板标题、登录页、浏览器标题、README、日志启动信息、`container_name: gpt-image`）；Go 模块路径、仓库名、`CHATGPT2API_*` 环境变量与镜像名保持不变。
+- 产品更名为 **GPT Image**（面板标题、登录页、浏览器标题、README、日志启动信息、`container_name: gpt-image`）；Go 模块路径与 `CHATGPT2API_*` 环境变量保持不变；仓库更名为 GPT-Image，镜像为 `ghcr.io/sakuralaaa/gpt-image`。
 - 改为单管理员：移除用户注册、用户管理、RBAC/角色、个人中心、按用户计费 UI、Linuxdo 登录残留、登录页图片设置与首页；对应后端路由删除（返回 404）。非管理员凭证不能再访问 `/api/*`。
 - 旧的 `/api/accounts/recover*` 同步找回接口由 `/api/recovery/*` 后台任务队列取代。
 

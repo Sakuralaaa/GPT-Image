@@ -44,7 +44,7 @@ dockers_v2:
     disable: '{{ if eq .Env.DOCKERHUB_USERNAME "skip" }}true{{ else }}false{{ end }}'
     dockerfile: deploy/Dockerfile.release
     images:
-      - "{{ .Env.DOCKERHUB_USERNAME }}/chatgpt2api"
+      - "{{ .Env.DOCKERHUB_USERNAME }}/gpt-image"
     tags:
       - "{{ .Version }}"
       - "latest"
@@ -59,7 +59,7 @@ dockers_v2:
   - id: ghcr
     dockerfile: deploy/Dockerfile.release
     images:
-      - "ghcr.io/{{ .Env.GITHUB_REPO_OWNER_LOWER }}/chatgpt2api"
+      - "ghcr.io/{{ .Env.GITHUB_REPO_OWNER_LOWER }}/gpt-image"
     tags:
       - "{{ .Version }}"
       - "latest"
@@ -76,7 +76,7 @@ release:
   draft: false
   prerelease: auto
   replace_existing_artifacts: true
-  name_template: "chatgpt2api {{ .Version }}"
+  name_template: "GPT Image {{ .Version }}"
   header: |
     {{ .Env.TAG_MESSAGE }}
   footer: |
@@ -87,7 +87,7 @@ release:
 
     ```bash
     {{ if ne .Env.DOCKERHUB_USERNAME "skip" -}}
-    docker pull {{ .Env.DOCKERHUB_USERNAME }}/chatgpt2api:{{ .Version }}
+    docker pull {{ .Env.DOCKERHUB_USERNAME }}/gpt-image:{{ .Version }}
     {{ end -}}
-    docker pull ghcr.io/{{ .Env.GITHUB_REPO_OWNER_LOWER }}/chatgpt2api:{{ .Version }}
+    docker pull ghcr.io/{{ .Env.GITHUB_REPO_OWNER_LOWER }}/gpt-image:{{ .Version }}
     ```
