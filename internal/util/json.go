@@ -19,6 +19,9 @@ import (
 const (
 	ImageModelAuto       = "auto"
 	ImageModelGPT        = "gpt-image-2"
+	ImageModelGPT26         = "gpt-image-2.6"
+	ImageModelGPT26Flare    = "gpt-image-2.6-flare"
+	ImageModelGPT26Sunburst = "gpt-image-2.6-sunburst"
 	ImageModelGPT25      = "gpt-image-2.5"
 	ImageModelGPT25Flare    = "gpt-image-2.5-flare"
 	ImageModelGPT25Sunburst = "gpt-image-2.5-sunburst"
@@ -34,6 +37,9 @@ const (
 	ImageModelGPTMini    = "gpt-5-mini"
 )
 var ImageModels = map[string]struct{}{
+	ImageModelGPT26:         {},
+	ImageModelGPT26Flare:    {},
+	ImageModelGPT26Sunburst: {},
 	ImageModelGPT:           {},
 	ImageModelGPT25:         {},
 	ImageModelGPT25Flare:    {},
@@ -42,6 +48,9 @@ var ImageModels = map[string]struct{}{
 }
 
 var ModelIDs = []string{
+	ImageModelGPT26,
+	ImageModelGPT26Flare,
+	ImageModelGPT26Sunburst,
 	ImageModelGPT,
 	ImageModelGPT25,
 	ImageModelGPT25Flare,
@@ -60,6 +69,9 @@ var ModelIDs = []string{
 }
 
 var ImageGenerationModelIDs = []string{
+	ImageModelGPT26,
+	ImageModelGPT26Flare,
+	ImageModelGPT26Sunburst,
 	ImageModelGPT,
 	ImageModelGPT25,
 	ImageModelGPT25Flare,
@@ -77,6 +89,9 @@ func init() {
 
 var ResponsesImageToolModels = map[string]struct{}{
 	ImageModelAuto:          {},
+	ImageModelGPT26:         {},
+	ImageModelGPT26Flare:    {},
+	ImageModelGPT26Sunburst: {},
 	ImageModelGPT:           {},
 	ImageModelGPT25:         {},
 	ImageModelGPT25Flare:    {},

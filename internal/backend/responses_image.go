@@ -394,6 +394,8 @@ func normalizeResponsesImageToolModel(model string) string {
 		return ""
 	case util.ImageModelGPT25, util.ImageModelGPT25Flare, util.ImageModelGPT25Sunburst:
 		return util.ImageModelGPT25
+	case util.ImageModelGPT26, util.ImageModelGPT26Flare, util.ImageModelGPT26Sunburst:
+		return ""
 	case util.ImageModelCodex:
 		return ResponsesImageCodexToolModel
 	case ResponsesImageCodexToolModel:
@@ -833,17 +835,12 @@ func officialImageParentMessageID(requested string) string {
 	return firstNonEmpty(strings.TrimSpace(requested), clientCreatedRoot)
 }
 
-// officialImageModelSlug maps a client-facing image model to the slug the official
-// image pipeline submits upstream. The web client sends "auto" for the whole
-// gpt-image-2 family and lets the server pick the current model: pinning a concrete
-// slug (previously gpt-5-5) breaks the moment upstream retires it, and an unknown
-// slug makes /prepare answer conduit_token: null, so the follow-up
-// /backend-api/f/conversation only returns a disguised 404 Model not found.
+// officialImageModelSlug maps a client-facing image model to the driving chat
+// model sent to the web conversation path. The web path has no per-request
+// image model (upstream picks the image engine), so the mapping lives in the
+// single util image model table and can be overridden from settings.
 func officialImageModelSlug(model string) string {
-	if strings.TrimSpace(model) == util.ImageModelCodex {
-		return util.ImageModelCodex
-	}
-	return util.ImageModelAuto
+	return util.ImageUpstreamModel(model)
 }
 
 func (c *Client) uploadImage(ctx context.Context, input ResponsesInputImage, fileName string) (uploadedImageRef, error) {

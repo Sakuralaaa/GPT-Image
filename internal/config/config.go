@@ -285,6 +285,18 @@ func (s *Store) SentinelSolverURL() string {
 	return strings.TrimRight(strings.TrimSpace(fmt.Sprint(s.settingValue("sentinel_solver_url", ""))), "/")
 }
 
+// ImageModelUpstream returns the admin overrides of the driving chat model
+// per canonical image model (see util.ImageModelCatalog).
+func (s *Store) ImageModelUpstream() map[string]string {
+	out := map[string]string{}
+	for id, value := range util.StringMap(s.settingValue("image_model_upstream", nil)) {
+		if model := strings.TrimSpace(util.Clean(value)); model != "" {
+			out[id] = model
+		}
+	}
+	return out
+}
+
 func (s *Store) SentinelSolverKey() string {
 	return strings.TrimSpace(fmt.Sprint(s.settingValue("sentinel_solver_key", "")))
 }
@@ -385,6 +397,14 @@ func (s *Store) Get() map[string]any {
 	data["sentinel_solver_url"] = s.SentinelSolverURL()
 	data["sentinel_solver_key"] = s.SentinelSolverKey()
 	data["base_url"] = s.BaseURL()
+	upstream := util.ImageUpstreamDefaults()
+	for id, model := range s.ImageModelUpstream() {
+		if _, ok := upstream[id]; ok && model != "" {
+			upstream[id] = model
+		}
+	}
+	data["image_model_upstream"] = upstream
+	data["image_model_catalog"] = util.ImageModelCatalog
 	data["registration_enabled"] = s.RegistrationEnabled()
 	data["login_page_image_url"] = s.LoginPageImageURL()
 	data["login_page_image_mode"] = s.LoginPageImageMode()

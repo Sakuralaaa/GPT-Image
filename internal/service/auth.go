@@ -14,6 +14,8 @@ import (
 const (
 	AuthRoleAdmin = "admin"
 	AuthRoleUser  = "user"
+	// AuthRoleAPIKey marks identities authenticated by a standalone API key.
+	AuthRoleAPIKey = "api_key"
 
 	AuthKindAPIKey  = "api_key"
 	AuthKindSession = "session"
@@ -1858,4 +1860,16 @@ type authError string
 
 func (e authError) Error() string {
 	return string(e)
+}
+
+// LegacyCredentialItems returns copies of the stored legacy credentials (used
+// to migrate user-bound API keys into standalone keys).
+func (s *AuthService) LegacyCredentialItems() []map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]map[string]any, 0, len(s.items))
+	for _, item := range s.items {
+		out = append(out, util.CopyMap(item))
+	}
+	return out
 }

@@ -32,7 +32,7 @@ func main() {
 	}
 
 	go func() {
-		logger.Info("starting server", "addr", ":"+port)
+		logger.Info("starting GPT Image server", "addr", ":"+port)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("listen failed", "error", err)
 			os.Exit(1)

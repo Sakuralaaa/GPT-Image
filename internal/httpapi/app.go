@@ -1,13 +1,11 @@
 package httpapi
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -16,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -34,7 +31,6 @@ import (
 )
 
 const (
-	maxLoginPageImageSize      = 10 << 20
 	imageThumbnailCacheControl = "public, max-age=31536000, immutable"
 	authSessionCookieName      = "chatgpt2api_session"
 )
@@ -57,6 +53,7 @@ type App struct {
 	sub2Import *service.Sub2APIService
 	register   *service.RegisterService
 	recovery   *service.AccountRecovery
+	apiKeys    *service.APIKeyService
 	cancel     context.CancelFunc
 }
 
@@ -65,6 +62,7 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	util.SetImageUpstreamOverrides(cfg.ImageModelUpstream())
 	storageBackend, err := cfg.StorageBackend()
 	if err != nil {
 		return nil, err
@@ -77,7 +75,18 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 	proxy := service.NewProxyService(cfg)
+	secretKey, err := service.InitSecretKey(cfg.DataDir)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	if secretKey.Generated {
+		logger.Warning("CHATGPT2API_SECRET_KEY is not set; generated an at-rest key file, back it up together with the database", "path", secretKey.Path)
+	}
 	accounts := service.NewAccountService(storageBackend, cfg, proxy, logs)
+	if accounts.MigrateAccountSecrets() {
+		logger.Info("encrypted plaintext account credentials at rest")
+	}
 	auth := service.NewAuthService(storageBackend)
 	billing := service.NewBillingService(storageBackend, cfg)
 	auth.SetUserCreatedHook(func(userID string) {
@@ -99,7 +108,11 @@ func NewApp() (*App, error) {
 	app.cpaImport = service.NewCPAImportService(app.cpa, accounts, proxy)
 	app.sub2Import = service.NewSub2APIService(app.sub2, accounts)
 	app.register = service.NewRegisterService(accounts, storageBackend)
-	app.recovery = service.NewAccountRecovery(accounts, app.register)
+	app.recovery = service.NewAccountRecovery(accounts, app.register, storageBackend)
+	app.apiKeys = service.NewAPIKeyService(storageBackend)
+	if migrated := app.apiKeys.MigrateLegacyKeys(auth.LegacyCredentialItems()); migrated > 0 {
+		logger.Info("migrated user-bound API keys to standalone keys", "count", migrated)
+	}
 	app.tasks = service.NewStoredImageTaskService(storageBackend,
 		func(ctx context.Context, identity service.Identity, payload map[string]any) (map[string]any, error) {
 			return app.runLoggedImageTask(ctx, identity, payload, "/api/creation-tasks/image-generations", "文生图", func(ctx context.Context, payload map[string]any) (map[string]any, error) {
@@ -128,12 +141,16 @@ func NewApp() (*App, error) {
 	accounts.StartLimitedWatcher(ctx, time.Duration(cfg.RefreshAccountIntervalMinute())*time.Minute)
 	accounts.StartSessionRefreshWatcher(ctx, time.Minute)
 	logs.StartRetentionCleaner(ctx, cfg.LogRetentionDays, 24*time.Hour, logger)
+	app.recovery.Start(ctx)
 	return app, nil
 }
 
 func (a *App) Close() {
 	if a.cancel != nil {
 		a.cancel()
+	}
+	if a.apiKeys != nil {
+		a.apiKeys.Flush()
 	}
 	if a.logger != nil {
 		_ = a.logger.Close()
@@ -152,7 +169,7 @@ func (a *App) Logger() *service.Logger {
 }
 
 func (a *App) handleModels(w http.ResponseWriter, r *http.Request) {
-	identity, ok := a.requireIdentity(w, r, "")
+	identity, ok := a.requireAPIIdentity(w, r, "")
 	if !ok {
 		return
 	}
@@ -170,7 +187,7 @@ func (a *App) handleModelCatalog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleImageGenerations(w http.ResponseWriter, r *http.Request) {
-	identity, ok := a.requireIdentity(w, r, "")
+	identity, ok := a.requireAPIIdentity(w, r, "")
 	if !ok {
 		return
 	}
@@ -190,6 +207,11 @@ func (a *App) handleImageGenerations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	model := firstNonEmpty(util.Clean(body["model"]), util.ImageModelAuto)
+	release, ok := a.admitAPIKey(w, r, identity, model, protocolBillableUnits("/v1/images/generations", body))
+	if !ok {
+		return
+	}
+	defer release()
 	if err := a.checkProtocolBilling(identity, protocolBillableUnits("/v1/images/generations", body)); err != nil {
 		a.writeProtocol(w, r, nil, nil, err, "openai", "/v1/images/generations", model, identity, "文生图", visibility, service.BillingReference{})
 		return
@@ -201,7 +223,7 @@ func (a *App) handleImageGenerations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleImageEdits(w http.ResponseWriter, r *http.Request) {
-	identity, ok := a.requireIdentity(w, r, "")
+	identity, ok := a.requireAPIIdentity(w, r, "")
 	if !ok {
 		return
 	}
@@ -230,6 +252,11 @@ func (a *App) handleImageEdits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	model := firstNonEmpty(util.Clean(body["model"]), util.ImageModelAuto)
+	release, ok := a.admitAPIKey(w, r, identity, model, protocolBillableUnits("/v1/images/edits", body))
+	if !ok {
+		return
+	}
+	defer release()
 	if err := a.checkProtocolBilling(identity, protocolBillableUnits("/v1/images/edits", body)); err != nil {
 		a.writeProtocol(w, r, nil, nil, err, "openai", "/v1/images/edits", model, identity, "图生图", visibility, service.BillingReference{})
 		return
@@ -241,7 +268,7 @@ func (a *App) handleImageEdits(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
-	identity, ok := a.requireIdentity(w, r, "")
+	identity, ok := a.requireAPIIdentity(w, r, "")
 	if !ok {
 		return
 	}
@@ -254,6 +281,11 @@ func (a *App) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	body["owner_name"] = identityDisplayName(identity)
 	a.attachCreationTaskLimiter(body, identity)
 	model := firstNonEmpty(util.Clean(body["model"]), "auto")
+	release, ok := a.admitAPIKey(w, r, identity, model, protocolBillableUnits("/v1/chat/completions", body))
+	if !ok {
+		return
+	}
+	defer release()
 	if err := a.checkProtocolBilling(identity, protocolBillableUnits("/v1/chat/completions", body)); err != nil {
 		a.writeProtocol(w, r, nil, nil, err, "openai", "/v1/chat/completions", model, identity, "文本生成", service.ImageVisibilityPrivate, service.BillingReference{})
 		return
@@ -267,7 +299,7 @@ func (a *App) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
-	identity, ok := a.requireIdentity(w, r, "")
+	identity, ok := a.requireAPIIdentity(w, r, "")
 	if !ok {
 		return
 	}
@@ -280,6 +312,11 @@ func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
 	body["owner_name"] = identityDisplayName(identity)
 	a.attachCreationTaskLimiter(body, identity)
 	model := firstNonEmpty(util.Clean(body["model"]), "auto")
+	release, ok := a.admitAPIKey(w, r, identity, model, protocolBillableUnits("/v1/responses", body))
+	if !ok {
+		return
+	}
+	defer release()
 	if err := a.checkProtocolBilling(identity, protocolBillableUnits("/v1/responses", body)); err != nil {
 		a.writeProtocol(w, r, nil, nil, err, "openai", "/v1/responses", model, identity, "Responses", service.ImageVisibilityPrivate, service.BillingReference{})
 		return
@@ -297,7 +334,7 @@ func (a *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 	if authHeader == "" && r.Header.Get("x-api-key") != "" {
 		authHeader = "Bearer " + r.Header.Get("x-api-key")
 	}
-	identity, ok := a.requireIdentity(w, r, authHeader)
+	identity, ok := a.requireAPIIdentity(w, r, authHeader)
 	if !ok {
 		return
 	}
@@ -307,6 +344,11 @@ func (a *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	model := firstNonEmpty(util.Clean(body["model"]), "auto")
+	release, ok := a.admitAPIKey(w, r, identity, model, 0)
+	if !ok {
+		return
+	}
+	defer release()
 	ctx, _ := protocol.WithAccountUsageTracker(r.Context())
 	r = r.WithContext(ctx)
 	result, stream, err := a.engine.HandleMessages(ctx, body)
@@ -325,6 +367,7 @@ func (a *App) writeProtocol(w http.ResponseWriter, r *http.Request, result map[s
 	if stream == nil {
 		urls := collectURLs(result)
 		a.recordProtocolGeneratedImages(identity, urls, visibility, imagePayloads...)
+		a.finishAPIKeyUsage(r, max(billableProtocolOutputCount(endpoint, result), billableURLCount(urls)))
 		a.logCall(r.Context(), identity, summary, r.Method, endpoint, model, start, "success", http.StatusOK, "", urls, requestCapture)
 		markRequestBusinessLogged(r)
 		util.WriteJSON(w, http.StatusOK, result)
@@ -353,6 +396,7 @@ func (a *App) writeProtocol(w http.ResponseWriter, r *http.Request, result map[s
 			return
 		}
 		a.recordProtocolGeneratedImages(identity, urls, visibility, imagePayloads...)
+		a.finishAPIKeyUsage(r, billableURLCount(urls))
 		a.logCall(r.Context(), identity, summary, r.Method, endpoint, model, start, "success", http.StatusOK, "", urls, requestCapture)
 		markRequestBusinessLogged(r)
 		return
@@ -371,11 +415,13 @@ func (a *App) writeProtocol(w http.ResponseWriter, r *http.Request, result map[s
 	}
 	if err := <-stream.Err; err != nil {
 		a.recordProtocolGeneratedImages(identity, urls, visibility, imagePayloads...)
+		a.finishAPIKeyUsage(r, billableURLCount(urls))
 		a.logCall(r.Context(), identity, summary, r.Method, endpoint, model, start, "failed", protocolErrorHTTPStatus(err), err.Error(), urls, requestCapture)
 		markRequestBusinessLogged(r)
 		fmt.Fprintf(w, "data: %s\n\n", jsonString(openAIErrorForStream(err)))
 	} else {
 		a.recordProtocolGeneratedImages(identity, urls, visibility, imagePayloads...)
+		a.finishAPIKeyUsage(r, billableURLCount(urls))
 		a.logCall(r.Context(), identity, summary, r.Method, endpoint, model, start, "success", http.StatusOK, "", urls, requestCapture)
 		markRequestBusinessLogged(r)
 	}
@@ -437,6 +483,10 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		util.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if identity.Role != service.AuthRoleAdmin {
+		util.WriteError(w, http.StatusForbidden, "仅管理员可登录")
+		return
+	}
 	setAuthSessionCookie(w, r, token)
 	a.writeLoginResponse(w, *identity, token)
 }
@@ -450,25 +500,6 @@ func (a *App) handleSession(w http.ResponseWriter, r *http.Request) {
 		setAuthSessionCookie(w, r, token)
 	}
 	a.writeLoginResponse(w, identity, "")
-}
-
-func (a *App) handleAccountRegister(w http.ResponseWriter, r *http.Request) {
-	if !a.config.RegistrationEnabled() {
-		util.WriteError(w, http.StatusForbidden, "已关闭注册通道")
-		return
-	}
-	body, err := readJSONMap(r)
-	if err != nil {
-		util.WriteError(w, http.StatusBadRequest, "invalid json body")
-		return
-	}
-	identity, token, err := a.auth.RegisterPasswordUser(util.Clean(body["username"]), util.Clean(body["password"]), util.Clean(body["name"]))
-	if err != nil {
-		util.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	setAuthSessionCookie(w, r, token)
-	a.writeLoginResponse(w, *identity, token)
 }
 
 func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -545,19 +576,24 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		util.WriteJSON(w, http.StatusOK, map[string]any{"config": a.config.Get()})
+		util.WriteJSON(w, http.StatusOK, map[string]any{"config": maskConfigSecrets(a.config.Get())})
 	case http.MethodPost:
 		body, err := readJSONMap(r)
 		if err != nil {
 			util.WriteError(w, http.StatusBadRequest, "invalid json body")
 			return
 		}
+		if v, ok := body["sentinel_solver_key"]; ok {
+			body["sentinel_solver_key"] = service.UnmaskSecret(util.Clean(v), a.config.SentinelSolverKey())
+		}
+		delete(body, "image_model_catalog")
 		updated, err := a.config.Update(body)
 		if err != nil {
 			util.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		util.WriteJSON(w, http.StatusOK, map[string]any{"config": updated})
+		util.SetImageUpstreamOverrides(a.config.ImageModelUpstream())
+		util.WriteJSON(w, http.StatusOK, map[string]any{"config": maskConfigSecrets(updated)})
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -565,188 +601,9 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleAppMeta(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, http.StatusOK, map[string]any{
-		"app_title":                   "chatgpt2api",
-		"project_name":                "chatgpt2api",
-		"login_page_image_url":        a.config.LoginPageImageURL(),
-		"login_page_image_mode":       a.config.LoginPageImageMode(),
-		"login_page_image_zoom":       a.config.LoginPageImageZoom(),
-		"login_page_image_position_x": a.config.LoginPageImagePositionX(),
-		"login_page_image_position_y": a.config.LoginPageImagePositionY(),
+		"app_title":    "GPT Image",
+		"project_name": "GPT Image",
 	})
-}
-
-func (a *App) handlePermissionCatalog(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.requireIdentity(w, r, ""); !ok {
-		return
-	}
-	util.WriteJSON(w, http.StatusOK, a.auth.PermissionCatalog())
-}
-
-func (a *App) handleLoginPageImageSettings(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.requireIdentity(w, r, ""); !ok {
-		return
-	}
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	if err := r.ParseMultipartForm(maxLoginPageImageSize + (1 << 20)); err != nil {
-		util.WriteError(w, http.StatusBadRequest, "invalid multipart form")
-		return
-	}
-
-	currentImageURL := a.config.LoginPageImageURL()
-	nextImageURL := strings.TrimSpace(r.FormValue("login_page_image_url"))
-	uploadedImageURL := ""
-	switch strings.ToLower(strings.TrimSpace(r.FormValue("login_page_image_action"))) {
-	case "remove":
-		nextImageURL = ""
-	case "replace":
-		fileHeader := firstMultipartFile(r.MultipartForm, "login_page_image_file")
-		if fileHeader == nil {
-			util.WriteError(w, http.StatusBadRequest, "login page image file is required")
-			return
-		}
-		storedURL, err := a.storeLoginPageImage(fileHeader)
-		if err != nil {
-			util.WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		nextImageURL = storedURL
-		uploadedImageURL = storedURL
-	}
-
-	updated, err := a.config.Update(map[string]any{
-		"login_page_image_url":        nextImageURL,
-		"login_page_image_mode":       strings.TrimSpace(r.FormValue("login_page_image_mode")),
-		"login_page_image_zoom":       strings.TrimSpace(r.FormValue("login_page_image_zoom")),
-		"login_page_image_position_x": strings.TrimSpace(r.FormValue("login_page_image_position_x")),
-		"login_page_image_position_y": strings.TrimSpace(r.FormValue("login_page_image_position_y")),
-	})
-	if err != nil {
-		if uploadedImageURL != "" {
-			a.deleteLocalLoginPageImage(uploadedImageURL)
-		}
-		util.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if currentImageURL != "" && currentImageURL != nextImageURL {
-		a.deleteLocalLoginPageImage(currentImageURL)
-	}
-	util.WriteJSON(w, http.StatusOK, map[string]any{"config": updated})
-}
-
-func (a *App) storeLoginPageImage(header *multipart.FileHeader) (string, error) {
-	data, ext, err := readLoginPageImageFile(header)
-	if err != nil {
-		return "", err
-	}
-	stem := safeUploadStem(header.Filename)
-	if stem == "" {
-		stem = "login-page"
-	}
-	filename := fmt.Sprintf("%d-%s%s", time.Now().UnixNano(), stem, ext)
-	target := filepath.Join(a.config.LoginPageImagesDir(), filename)
-	if err := os.WriteFile(target, data, 0o644); err != nil {
-		return "", err
-	}
-	return "/login-page-images/" + filename, nil
-}
-
-func readLoginPageImageFile(header *multipart.FileHeader) ([]byte, string, error) {
-	if header == nil {
-		return nil, "", fmt.Errorf("image file is required")
-	}
-	if header.Size > maxLoginPageImageSize {
-		return nil, "", fmt.Errorf("login page image cannot exceed 10MB")
-	}
-	file, err := header.Open()
-	if err != nil {
-		return nil, "", err
-	}
-	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, maxLoginPageImageSize+1))
-	if err != nil {
-		return nil, "", err
-	}
-	if len(data) == 0 {
-		return nil, "", fmt.Errorf("image file is empty")
-	}
-	if len(data) > maxLoginPageImageSize {
-		return nil, "", fmt.Errorf("login page image cannot exceed 10MB")
-	}
-	if ext := strings.ToLower(filepath.Ext(header.Filename)); ext == ".svg" && bytes.Contains(bytes.ToLower(data[:min(len(data), 512)]), []byte("<svg")) {
-		return data, ".svg", nil
-	}
-	if _, _, err := image.DecodeConfig(bytes.NewReader(data)); err != nil {
-		return nil, "", fmt.Errorf("unsupported image file")
-	}
-	switch http.DetectContentType(data) {
-	case "image/jpeg":
-		return data, ".jpg", nil
-	case "image/gif":
-		return data, ".gif", nil
-	case "image/webp":
-		return data, ".webp", nil
-	default:
-		return data, ".png", nil
-	}
-}
-
-func (a *App) deleteLocalLoginPageImage(imageURL string) {
-	imagePath, ok := a.localLoginPageImagePath(imageURL)
-	if ok {
-		_ = os.Remove(imagePath)
-	}
-}
-
-func (a *App) localLoginPageImagePath(imageURL string) (string, bool) {
-	cleanURL := strings.TrimSpace(imageURL)
-	if !strings.HasPrefix(cleanURL, "/login-page-images/") {
-		return "", false
-	}
-	rel := strings.TrimPrefix(path.Clean(cleanURL), "/login-page-images/")
-	if rel == "." || rel == "" || strings.Contains(rel, "..") {
-		return "", false
-	}
-	root, err := filepath.Abs(a.config.LoginPageImagesDir())
-	if err != nil {
-		return "", false
-	}
-	target, err := filepath.Abs(filepath.Join(root, filepath.FromSlash(rel)))
-	if err != nil {
-		return "", false
-	}
-	if target != root && !strings.HasPrefix(target, root+string(os.PathSeparator)) {
-		return "", false
-	}
-	return target, true
-}
-
-func firstMultipartFile(form *multipart.Form, key string) *multipart.FileHeader {
-	if form == nil || len(form.File[key]) == 0 {
-		return nil
-	}
-	return form.File[key][0]
-}
-
-func safeUploadStem(filename string) string {
-	name := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
-	name = strings.ToLower(strings.TrimSpace(name))
-	var builder strings.Builder
-	for _, char := range name {
-		switch {
-		case char >= 'a' && char <= 'z':
-			builder.WriteRune(char)
-		case char >= '0' && char <= '9':
-			builder.WriteRune(char)
-		case char == '-' || char == '_':
-			builder.WriteRune(char)
-		case char == ' ' || char == '.':
-			builder.WriteRune('-')
-		}
-	}
-	return strings.Trim(builder.String(), "-_")
 }
 
 func (a *App) handleImages(w http.ResponseWriter, r *http.Request) {
@@ -1101,7 +958,7 @@ func (a *App) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		util.WriteJSON(w, http.StatusOK, map[string]any{"proxy": map[string]any{"url": a.config.Proxy(), "flaresolverr": a.config.FlareSolverr(), "sentinel_solver_url": a.config.SentinelSolverURL(), "sentinel_solver_key": a.config.SentinelSolverKey()}})
+		util.WriteJSON(w, http.StatusOK, map[string]any{"proxy": map[string]any{"url": a.config.Proxy(), "flaresolverr": a.config.FlareSolverr(), "sentinel_solver_url": a.config.SentinelSolverURL(), "sentinel_solver_key": service.MaskSecret(a.config.SentinelSolverKey())}})
 	case http.MethodPost:
 		body, _ := readJSONMap(r)
 		updates := map[string]any{}
@@ -1115,14 +972,14 @@ func (a *App) handleProxy(w http.ResponseWriter, r *http.Request) {
 			updates["sentinel_solver_url"] = util.Clean(body["sentinel_solver_url"])
 		}
 		if _, ok := body["sentinel_solver_key"]; ok {
-			updates["sentinel_solver_key"] = util.Clean(body["sentinel_solver_key"])
+			updates["sentinel_solver_key"] = service.UnmaskSecret(util.Clean(body["sentinel_solver_key"]), a.config.SentinelSolverKey())
 		}
 		updated, err := a.config.Update(updates)
 		if err != nil {
 			util.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		util.WriteJSON(w, http.StatusOK, map[string]any{"proxy": map[string]any{"url": updated["proxy"], "flaresolverr": updated["flaresolverr"], "sentinel_solver_url": updated["sentinel_solver_url"], "sentinel_solver_key": updated["sentinel_solver_key"]}})
+		util.WriteJSON(w, http.StatusOK, map[string]any{"proxy": map[string]any{"url": updated["proxy"], "flaresolverr": updated["flaresolverr"], "sentinel_solver_url": updated["sentinel_solver_url"], "sentinel_solver_key": service.MaskSecret(util.Clean(updated["sentinel_solver_key"]))}})
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -1131,6 +988,10 @@ func (a *App) handleProxy(w http.ResponseWriter, r *http.Request) {
 func (a *App) requireIdentity(w http.ResponseWriter, r *http.Request, overrideAuth string) (service.Identity, bool) {
 	token := overrideAuthToken(overrideAuth, r)
 	if identity := a.auth.Authenticate(token); identity != nil {
+		if identity.Role != service.AuthRoleAdmin {
+			util.WriteError(w, http.StatusForbidden, "permission denied")
+			return service.Identity{}, false
+		}
 		if !a.identityCanAccessRequest(*identity, r) {
 			util.WriteError(w, http.StatusForbidden, "permission denied")
 			return service.Identity{}, false
@@ -1679,6 +1540,7 @@ func (a *App) recordGeneratedImagesForPayload(identity service.Identity, urls []
 		ShareReferences:   sharePromptParams && util.ToBool(payload["share_reference_images"]),
 	})
 }
+
 func imageReferenceMetadataFromPayload(payload map[string]any) []service.GeneratedImageReference {
 	if payload == nil {
 		return nil

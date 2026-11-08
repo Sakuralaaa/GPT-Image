@@ -4,6 +4,9 @@ import type { LoginPageImageMode } from "@/lib/login-page-image-layout";
 export type AccountType = "Free" | "Plus" | "ProLite" | "Pro" | "Team";
 export type AccountStatus = "正常" | "限流" | "异常" | "禁用" | "刷新中" | "过期待刷新";
 export const IMAGE_MODEL_OPTIONS = [
+  { value: "gpt-image-2.6", label: "GPT Image 2.6" },
+  { value: "gpt-image-2.6-flare", label: "GPT Image 2.6 Flare" },
+  { value: "gpt-image-2.6-sunburst", label: "GPT Image 2.6 Sunburst" },
   { value: "auto", label: "Auto" },
   { value: "gpt-image-2.5", label: "gpt-image-2.5" },
   { value: "gpt-image-2.5-flare", label: "gpt-image-2.5 快速" },
@@ -17,7 +20,7 @@ export type ImageModel = (typeof IMAGE_MODEL_OPTIONS)[number]["value"];
 export const DEFAULT_IMAGE_MODEL: ImageModel = "auto";
 export const DEFAULT_CHAT_MODEL: ImageModel = "auto";
 export const CODEX_IMAGE_MODEL: ImageModel = "codex-gpt-image-2";
-const IMAGE_TASK_MODEL_VALUES = new Set<string>(["auto", "gpt-image-2.5", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2", "codex-gpt-image-2"]);
+const IMAGE_TASK_MODEL_VALUES = new Set<string>(["gpt-image-2.6", "gpt-image-2.6-flare", "gpt-image-2.6-sunburst", "auto", "gpt-image-2.5", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2", "codex-gpt-image-2"]);
 const CHAT_MODEL_VALUES = new Set<string>(["auto", "gpt-5.6", "gpt-5.5"]);
 export const IMAGE_TASK_MODEL_OPTIONS = IMAGE_MODEL_OPTIONS.filter((option) => IMAGE_TASK_MODEL_VALUES.has(option.value));
 export const IMAGE_CREATION_MODEL_OPTIONS = IMAGE_TASK_MODEL_OPTIONS;
@@ -83,9 +86,21 @@ export const IMAGE_MODEL_ROUTE_DETAILS: Partial<Record<
     badge?: string;
   }
 >> = {
+  "gpt-image-2.6": {
+    routeLabel: "官方图片工具",
+    description: "当前网页端图像引擎（Images 2.6，由上游自动选择）；驱动模型可在设置中调整。",
+  },
+  "gpt-image-2.6-flare": {
+    routeLabel: "官方图片工具 · Flare",
+    description: "默认同样由上游自动选择；可在设置的“图像模型映射”里指定即时驱动模型。",
+  },
+  "gpt-image-2.6-sunburst": {
+    routeLabel: "官方图片工具 · Sunburst",
+    description: "默认同样由上游自动选择；可在设置的“图像模型映射”里指定思考驱动模型。",
+  },
   auto: {
     routeLabel: "官方图片工具",
-    description: "默认等价 gpt-image-2.5；比例只作为提示词构图偏好，实际像素由官方返回决定。",
+    description: "等价 gpt-image-2.6；比例只作为提示词构图偏好，实际像素由官方返回决定。",
   },
   "gpt-image-2.5": {
     routeLabel: "官方图片工具",
@@ -123,7 +138,7 @@ export function isChatModel(value: unknown): boolean {
 }
 
 export function usesOfficialImageRoute(model: string) {
-  return model === "auto" || model === "gpt-image-2.5" || model === "gpt-image-2.5-flare" || model === "gpt-image-2.5-sunburst" || model === "gpt-image-2";
+  return model === "auto" || model.startsWith("gpt-image-2.6") || model === "gpt-image-2.5" || model === "gpt-image-2.5-flare" || model === "gpt-image-2.5-sunburst" || model === "gpt-image-2";
 }
 
 export function usesCodexImageRoute(model: string) {
@@ -900,39 +915,6 @@ export async function createAccountFromSession(sessionJson: string) {
   return httpRequest<AccountMutationResponse>("/api/accounts/session", {
     method: "POST",
     body: { session_json: sessionJson },
-  });
-}
-
-export type AccountRecoveryStartResponse = {
-  started: Record<string, boolean>;
-  errors: Record<string, string>;
-};
-
-export async function startAccountRecovery(emails: string[]) {
-  return httpRequest<AccountRecoveryStartResponse>("/api/accounts/recover", {
-    method: "POST",
-    body: { emails },
-  });
-}
-
-export async function confirmAccountRecovery(email: string, otp: string) {
-  return httpRequest<{ ok: boolean; token_preview: string }>("/api/accounts/recover/confirm", {
-    method: "POST",
-    body: { email, otp },
-  });
-}
-
-export async function fetchRecoveryCodeOtp(email: string) {
-  return httpRequest<{ ok: boolean; otp: string }>("/api/accounts/recover/fetch-code", {
-    method: "POST",
-    body: { email },
-  });
-}
-
-export async function cancelAccountRecovery(email: string) {
-  return httpRequest<{ ok: boolean }>("/api/accounts/recover/cancel", {
-    method: "POST",
-    body: { email },
   });
 }
 

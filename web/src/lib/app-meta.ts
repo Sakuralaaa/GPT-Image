@@ -22,7 +22,7 @@ export type AppMeta = {
 };
 
 export const defaultAppMeta: AppMeta = {
-  app_title: "chatgpt2api",
+  app_title: "GPT Image",
   project_name: "chatgpt2api",
   login_page_image_url: "",
   login_page_image_mode: "contain",

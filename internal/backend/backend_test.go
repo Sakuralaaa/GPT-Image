@@ -175,7 +175,10 @@ func TestOfficialImageModelSlug(t *testing.T) {
 		{model: "gpt-image-2.5", want: "auto"},
 		{model: "gpt-image-2.5-flare", want: "auto"},
 		{model: "gpt-image-2.5-sunburst", want: "auto"},
-		{model: "codex-gpt-image-2", want: "codex-gpt-image-2"},
+		{model: "gpt-image-2.6", want: "auto"},
+		{model: "gpt-image-2.6-flare", want: "auto"},
+		{model: "gpt-image-2.6-sunburst", want: "auto"},
+		{model: "codex-gpt-image-2", want: "auto"},
 		{model: "gpt-5.5", want: "auto"},
 	} {
 		if got := officialImageModelSlug(tt.model); got != tt.want {

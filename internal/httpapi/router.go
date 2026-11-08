@@ -43,31 +43,24 @@ func (a *App) routes() []appRoute {
 
 		exact(http.MethodPost, "/auth/login", a.handleLogin),
 		exact(http.MethodPost, "/auth/logout", a.handleLogout),
-		exact(http.MethodPost, "/auth/register", a.handleAccountRegister),
 		exact(http.MethodGet, "/auth/session", a.handleSession),
-		exact("", "/auth/providers", a.handleAuthProviders),
 		exact(http.MethodGet, "/health", a.handleHealth),
 		exact(http.MethodGet, "/version", func(w http.ResponseWriter, _ *http.Request) {
 			util.WriteJSON(w, http.StatusOK, map[string]any{"version": version.Get()})
 		}),
 
 		subtree("/api/admin/system", a.handleAdminSystem),
-		subtree("/api/admin/roles", a.handleAdminRoles),
-		subtree("/api/admin/users", a.handleAdminUsers),
-		exact("", "/api/profile", a.handleProfile),
-		exact(http.MethodPost, "/api/profile/password", a.handleProfilePassword),
-		subtree("/api/profile/api-key", a.handleProfileAPIKey),
 		subtree("/api/profile/prompt-favorites", a.handleProfilePromptFavorites),
-		subtree("/api/auth/users", a.handleUserKeys),
 		subtree("/api/accounts", a.handleAccounts),
+		subtree("/api/keys", a.handleAPIKeys),
+		subtree("/api/recovery", a.handleRecovery),
+		exact(http.MethodGet, "/api/dashboard", a.handleDashboard),
 		subtree("/api/cpa/pools", a.handleCPA),
 		subtree("/api/sub2api/servers", a.handleSub2API),
 		subtree("/api/creation-tasks", a.handleCreationTasks),
 		subtree("/api/register", a.handleRegister),
 		exact("", "/api/settings", a.handleSettings),
-		exact("", "/api/settings/login-page-image", a.handleLoginPageImageSettings),
 		exact(http.MethodGet, "/api/app-meta", a.handleAppMeta),
-		exact(http.MethodGet, "/api/admin/permissions", a.handlePermissionCatalog),
 		exact("", "/api/images/visibility", a.handleImageVisibility),
 		exact("", "/api/images", a.handleImages),
 		exact("", "/api/images/storage-governance", a.handleImageStorageGovernance),
@@ -80,7 +73,6 @@ func (a *App) routes() []appRoute {
 		prefix("/images/", a.handleImageFile),
 		prefix("/image-references/", a.handleImageReferenceFile),
 		prefix("/image-thumbnails/", a.handleImageThumbnail),
-		prefix("/login-page-images/", http.StripPrefix("/login-page-images/", http.FileServer(http.Dir(a.config.LoginPageImagesDir()))).ServeHTTP),
 	}
 }
 

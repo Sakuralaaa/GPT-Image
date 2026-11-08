@@ -127,39 +127,17 @@ function normalizeBillingState(value: unknown): BillingState | null {
   };
 }
 
-export function canAccessPath(session: StoredAuthSession | null | undefined, path: string) {
-  if (!session) {
-    return false;
-  }
-  if (path === "/profile") {
-    return true;
-  }
-  if (session.role === "admin") {
-    return true;
-  }
-  return session.menuPaths.includes(path);
+export function canAccessPath(session: StoredAuthSession | null | undefined, _path: string) {
+  // Single-admin console: every page is available to the admin session.
+  return Boolean(session && session.role === "admin");
 }
 
-export function hasAPIPermission(session: StoredAuthSession | null | undefined, method: string, path: string) {
-  if (!session) {
-    return false;
-  }
-  if (session.role === "admin") {
-    return true;
-  }
-  return session.apiPermissions.includes(`${method.toLowerCase()}${path}`);
+export function hasAPIPermission(session: StoredAuthSession | null | undefined, _method: string, _path: string) {
+  return Boolean(session && session.role === "admin");
 }
 
-export function getDefaultRouteForSession(session: StoredAuthSession) {
-  if (session.role === "admin") {
-    return "/accounts";
-  }
-  for (const path of ["/image", "/image-manager", "/settings", ...session.menuPaths, "/profile"]) {
-    if (canAccessPath(session, path)) {
-      return path;
-    }
-  }
-  return "/image";
+export function getDefaultRouteForSession(_session: StoredAuthSession) {
+  return "/dashboard";
 }
 
 export async function getStoredAuthSession() {

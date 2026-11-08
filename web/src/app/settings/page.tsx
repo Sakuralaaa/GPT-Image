@@ -9,9 +9,10 @@ import { ConfigCard } from "./components/config-card";
 import { CPAPoolDialog } from "./components/cpa-pool-dialog";
 import { CPAPoolsCard } from "./components/cpa-pools-card";
 import { ImageStorageGovernanceCard } from "./components/image-storage-governance-card";
+import { ImageModelUpstreamCard } from "./components/image-model-upstream-card";
 import { ImportBrowserDialog } from "./components/import-browser-dialog";
 import { LogGovernanceCard } from "./components/log-governance-card";
-import { LoginPageImageCard } from "./components/login-page-image-card";
+import { RecoverySettingsCard } from "./components/recovery-settings-card";
 import { SettingsHeader } from "./components/settings-header";
 import { Sub2APIConnections } from "./components/sub2api-connections";
 import { useSettingsStore } from "./store";
@@ -72,7 +73,10 @@ function AdminSettingsPageContent({
           <ImageStorageGovernanceCard />
         </SettingsMasonryItem>
         <SettingsMasonryItem>
-          <LoginPageImageCard />
+          <ImageModelUpstreamCard />
+        </SettingsMasonryItem>
+        <SettingsMasonryItem>
+          <RecoverySettingsCard />
         </SettingsMasonryItem>
         <SettingsMasonryItem>
           <CPAPoolsCard />

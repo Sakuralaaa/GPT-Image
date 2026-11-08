@@ -11,6 +11,8 @@ import {
   CircleOff,
   Copy,
   Download,
+  Info,
+  LifeBuoy,
   LoaderCircle,
   Pencil,
   Power,
@@ -63,6 +65,11 @@ import { useAuthGuard } from "@/lib/use-auth-guard";
 import { cn } from "@/lib/utils";
 import { hasAPIPermission, type StoredAuthSession } from "@/store/auth";
 
+import { createRecoveryJob } from "@/lib/admin-api";
+import { useNavigate } from "react-router-dom";
+
+import { AccountCredentialsDialog } from "./components/account-credentials-dialog";
+import { AccountDetailDrawer } from "./components/account-detail-drawer";
 import { AccountImportDialog } from "./components/account-import-dialog";
 
 const QUOTA_REFRESH_EVENT = "chatgpt2api:quota-refresh";
@@ -262,6 +269,8 @@ function normalizeAccounts(items: Account[] | null | undefined): Account[] {
 }
 
 function AccountsPageContent({ session }: { session: StoredAuthSession }) {
+  const navigate = useNavigate();
+  const [detailId, setDetailId] = useState<string | null>(null);
   const didLoadRef = useRef(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -710,6 +719,17 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             )}
           </Button>
         ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 rounded-lg hover:bg-muted hover:text-foreground"
+          onClick={() => setDetailId(account.id)}
+          aria-label="账号详情与凭证"
+          title="账号详情与凭证"
+        >
+          <Info className="size-4" />
+        </Button>
         {canUpdateAccount ? (
           <Button
             type="button"
@@ -806,6 +826,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 导出 Token
               </Button>
             ) : null}
+            <AccountCredentialsDialog selectedIds={selectedAccountIds} onImported={() => void loadAccounts()} />
           </>
         }
       />
@@ -1277,6 +1298,22 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                       {isDeleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                       删除所选
                     </Button>
+                    <Button
+                      variant="ghost"
+                      className="h-8 rounded-lg px-3"
+                      onClick={() => {
+                        void createRecoveryJob({ account_ids: selectedAccountIds })
+                          .then(() => {
+                            toast.success("已创建找回任务");
+                            navigate("/recovery");
+                          })
+                          .catch((error) => toast.error(error instanceof Error ? error.message : "创建找回任务失败"));
+                      }}
+                      disabled={selectedAccountIds.length === 0}
+                    >
+                      <LifeBuoy className="size-4" />
+                      加入找回
+                    </Button>
                   </>
                 ) : null}
                 {selectedIds.length > 0 ? (
@@ -1504,6 +1541,15 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
           </CardContent>
         </Card>
       </section>
+      <AccountDetailDrawer
+        key={detailId ?? "closed"}
+        accountId={detailId}
+        onClose={() => setDetailId(null)}
+        onChanged={(nextId) => {
+          if (nextId) setDetailId(nextId);
+          void loadAccounts(true);
+        }}
+      />
     </>
   );
 }

@@ -1,7 +1,7 @@
-<h1 align="center">ChatGPT2API</h1>
+<h1 align="center">GPT Image</h1>
 
 <p align="center">
-  ChatGPT2API 是一个面向自托管场景的 ChatGPT 官网能力封装服务，提供 OpenAI 兼容图片 API、在线创作台、账号池调度、图片库、日志治理、RBAC 权限管理和 Docker 部署能力。
+  GPT Image 是一个面向自托管场景的 ChatGPT 官网能力封装服务（基于 chatgpt2api），提供 OpenAI 兼容图片 API、在线创作台、账号池调度、独立 API Key、账号找回与自愈、图片库、日志治理和 Docker 部署能力。单管理员使用，无多用户体系。
 </p>
 
 > [!WARNING]
@@ -15,6 +15,15 @@
 
 > [!CAUTION]
 > 公网部署时请务必添加外部访问控制，不要暴露敏感配置、账号 Token、数据库连接串或管理端入口。旧版本可能存在已知漏洞，请尽快升级到最新版本。
+
+## 管理端与安全（本 Fork）
+
+- **单管理员**：只保留 `CHATGPT2API_ADMIN_USERNAME` / `CHATGPT2API_ADMIN_PASSWORD` 引导的管理员登录（bcrypt 存储）。用户注册、用户管理、RBAC、个人中心、按用户计费 UI、Linuxdo 登录与登录页图片设置均已移除，相关接口返回 404。
+- **独立 API Key**（`API Key` 页 / `/api/keys`）：不绑定用户，可建任意多个。每个 Key 支持名称、自定义 Key 值（任意长度）或自动生成、启用开关、过期时间、总请求数 / 每日请求数（按 Asia/Shanghai 零点重置）/ 图片数量（按 n 计）上限、可选 RPM 与并发上限、模型白名单；统计累计与当日用量、最近使用时间，可一键重置用量。只存哈希，完整 Key 仅创建时显示一次。限制作用于 `/v1/chat/completions`、`/v1/responses`、`/v1/messages`、`/v1/images/generations`、`/v1/images/edits`，超限返回 OpenAI 风格的 429，停用/过期/模型不允许返回 403。日志记录 Key id/名称。启动时会把旧版“用户绑定的 API Key”按原哈希迁移为无限额的独立 Key，已有客户端无需更换。管理端登录会话可直接调用上述接口（不计入 Key 限额）。
+- **账号凭证**：账号详情抽屉展示并可编辑邮箱、密码、邮箱提供商、mail_ref、mail_token、入库时间、最近刷新、失败原因；支持读取最新邮件/验证码、刷新 Token、密码重登、邮箱验证码登录、粘贴 AT / session JSON 覆盖。支持 JSON / CSV 凭证导出（需确认）与导入（按邮箱 upsert）。
+- **静态加密**：账号 `password`、`mail_token` 使用 AES-256-GCM 加密存储，密钥取自 `CHATGPT2API_SECRET_KEY`（任意字符串）；未设置时自动生成并写入数据目录 `secret.key`（0600）并打印警告——请与数据库一起备份，丢失后已加密字段无法解密。旧的明文值在启动时自动迁移。设置接口不再明文返回 `sentinel_solver_key`、邮箱 `admin_password` / `api_key`、outlookEmail `api_key`，返回掩码，原样提交掩码表示不修改。
+- **找回任务**（`找回任务` 页 / `/api/recovery/*`）：持久化后台队列（存储在数据库 JSON 文档，重启后继续），可多选账号或粘贴邮箱建任务，并发可配（默认 3）。每个条目依次：刷新 Token → 已存密码登录 → 邮箱验证码登录并自动收码 → 收不到则进入“待填码”，可批量提交验证码；实时状态、失败原因、重试失败、取消。收码按邮箱域名确定性路由：域名属于某个 `cloudflare_temp_email` 配置 → 该 CF 渠道（优先账号的 per-address JWT，失败回落 admin API）；`outlook.*` / `hotmail.*` 或设置中的域名列表 → outlookEmail 渠道（`GET {base}/api/external/emails`，仅用于找回）；其余 → GPTMail。渠道不可用不会切换到其他渠道。只接受登录发起之后到达的验证码。**自动自愈**复用同一流水线，带全局并发、单账号冷却与指数退避、每日尝试上限，在 设置 → 找回与自愈 中开关。
+- **图像模型表**：`internal/util/image_catalog.go` 是唯一的图像模型映射表（客户端模型 → 网页通道的驱动对话模型）。`gpt-image-2.6` / `-flare` / `-sunburst` 默认都映射到 `auto`，旧名 `gpt-image-2`、`gpt-image-2.5*`、`codex-gpt-image-2` 作为别名保留；驱动模型可在 设置 → 图像模型映射 中修改。
 
 ## 本 Fork 的改动
 

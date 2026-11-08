@@ -78,6 +78,7 @@ type AccountService struct {
 	refresher                 *SessionRefresher
 	reloginRunning            map[string]struct{}
 	reloginHook               func(accessToken string, creds map[string]any) (string, string, error)
+	needsSecretMigration      bool
 }
 
 const (
@@ -247,6 +248,7 @@ func (s *AccountService) AddAccounts(tokens []string) map[string]any {
 		updates := map[string]any{"access_token": token, "type": util.ValueOr(current["type"], "Free")}
 		if !ok {
 			updates["enabled"] = true
+			updates["created_at"] = util.NowLocal()
 		}
 		normalized := normalizeAccount(mergeMaps(current, updates))
 		if normalized != nil {
@@ -411,6 +413,7 @@ func (s *AccountService) applyRefreshFailure(accessToken, reason string) {
 	updates := map[string]any{
 		"refresh_failures": failures,
 		"refresh_next_at":  nextAt,
+		"last_error":       reason,
 	}
 	action := ""
 	if failures >= maxRefreshFailures {
@@ -1511,6 +1514,8 @@ func (s *AccountService) RefreshAccountViaSession(accessToken, newAccessToken, n
 		"status":           "正常",
 		"refresh_failures": 0,
 		"refresh_next_at":  nil,
+		"last_refresh_at":  util.NowLocal(),
+		"last_error":       nil,
 	}))
 	if account == nil {
 		return false
@@ -2163,6 +2168,7 @@ func (s *AccountService) applyReloginFailure(accessToken, reason string) {
 		"refresh_failures": 0,
 		"refresh_next_at":  nextAt,
 		"status":           "过期待刷新",
+		"last_error":       reason,
 	})
 	s.logs.Add(fmt.Sprintf("密码重登失败(第 %d 次)，稍后重试", failures), map[string]any{
 		"module":         "accounts",
@@ -2596,14 +2602,66 @@ func (s *AccountService) loadAccounts() []map[string]any {
 	out := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		if normalized := normalizeAccount(item); normalized != nil {
+			for _, field := range accountSecretFields {
+				value := util.Clean(normalized[field])
+				if value == "" {
+					continue
+				}
+				if IsEncryptedSecret(value) {
+					plain, err := DecryptSecret(value)
+					if err != nil {
+						// Keep the sealed value so a wrong key never destroys data.
+						continue
+					}
+					normalized[field] = plain
+				} else if currentSecretKey() != nil {
+					s.needsSecretMigration = true
+				}
+			}
 			out = append(out, normalized)
 		}
 	}
 	return out
 }
 
+// MigrateAccountSecrets re-saves the pool when plaintext credentials were
+// loaded while an at-rest key is configured, sealing them transparently.
+func (s *AccountService) MigrateAccountSecrets() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.needsSecretMigration {
+		return false
+	}
+	s.needsSecretMigration = false
+	return s.saveLocked() == nil
+}
+
 func (s *AccountService) saveLocked() error {
-	return s.storage.SaveAccounts(s.items)
+	if currentSecretKey() == nil {
+		return s.storage.SaveAccounts(s.items)
+	}
+	sealed := make([]map[string]any, 0, len(s.items))
+	for _, item := range s.items {
+		next := item
+		copied := false
+		for _, field := range accountSecretFields {
+			value := util.Clean(item[field])
+			if value == "" || IsEncryptedSecret(value) {
+				continue
+			}
+			enc, err := EncryptSecret(value)
+			if err != nil {
+				return err
+			}
+			if !copied {
+				next = util.CopyMap(item)
+				copied = true
+			}
+			next[field] = enc
+		}
+		sealed = append(sealed, next)
+	}
+	return s.storage.SaveAccounts(sealed)
 }
 
 func (s *AccountService) remoteHeaders(accessToken string) map[string]string {
@@ -2893,6 +2951,17 @@ func publicAccounts(accounts []map[string]any) []map[string]any {
 			"success":            util.ToInt(account["success"], 0),
 			"fail":               util.ToInt(account["fail"], 0),
 			"lastUsedAt":         account["last_used_at"],
+			"has_password":       util.Clean(account["password"]) != "",
+			"has_session_token":  util.Clean(account["session_token"]) != "",
+			"mail_provider":      util.Clean(account["mail_provider"]),
+			"mail_ref":           util.Clean(account["mail_ref"]),
+			"has_mail_token":     util.Clean(account["mail_token"]) != "",
+			"created_at":         account["created_at"],
+			"last_refresh_at":    account["last_refresh_at"],
+			"last_error":         account["last_error"],
+			"refresh_failures":   util.ToInt(account["refresh_failures"], 0),
+			"relogin_failures":   util.ToInt(account["relogin_failures"], 0),
+			"note":               util.Clean(account["note"]),
 		})
 	}
 	return out

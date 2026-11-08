@@ -38,6 +38,9 @@ func TestResponsesImageToolModelsIncludeTextModels(t *testing.T) {
 
 func TestModelListIncludesTextAndImageModels(t *testing.T) {
 	wantOrder := []string{
+		ImageModelGPT26,
+		ImageModelGPT26Flare,
+		ImageModelGPT26Sunburst,
 		ImageModelGPT,
 		ImageModelGPT25,
 		ImageModelGPT25Flare,
@@ -83,5 +86,34 @@ func TestModelListIncludesTextAndImageModels(t *testing.T) {
 		if _, ok := got[model]; !ok {
 			t.Fatalf("ModelList() missing %q", model)
 		}
+	}
+}
+
+func TestImageUpstreamModelTable(t *testing.T) {
+	SetImageUpstreamOverrides(nil)
+	t.Cleanup(func() { SetImageUpstreamOverrides(nil) })
+	for model, want := range map[string]string{
+		"":                      "auto",
+		ImageModelAuto:          "auto",
+		ImageModelGPT26:         "auto",
+		ImageModelGPT26Flare:    "auto",
+		ImageModelGPT26Sunburst: "auto",
+		ImageModelGPT:           "auto",
+		ImageModelGPT25:         "auto",
+		ImageModelGPT25Flare:    "auto",
+		ImageModelGPT25Sunburst: "auto",
+		ImageModelCodex:         "auto",
+		ImageModelGPT55:         "auto",
+	} {
+		if got := ImageUpstreamModel(model); got != want {
+			t.Fatalf("ImageUpstreamModel(%q) = %q, want %q", model, got, want)
+		}
+	}
+	SetImageUpstreamOverrides(map[string]string{ImageModelGPT26Sunburst: "gpt-5-6", "bogus": "x"})
+	if got := ImageUpstreamModel(ImageModelGPT25Sunburst); got != "gpt-5-6" {
+		t.Fatalf("override not applied through alias: %q", got)
+	}
+	if got := ImageUpstreamTable()[ImageModelGPT26Flare]; got != "auto" {
+		t.Fatalf("table flare = %q", got)
 	}
 }

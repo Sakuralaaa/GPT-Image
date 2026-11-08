@@ -1,8 +1,8 @@
 services:
   app:
-    image: ${CHATGPT2API_IMAGE:-zyphrzero/chatgpt2api:latest}
+    image: ${CHATGPT2API_IMAGE:-ghcr.io/sakuralaaa/gptchat2api-cf:latest}
     pull_policy: ${CHATGPT2API_PULL_POLICY:-always}
-    container_name: chatgpt2api
+    container_name: gpt-image
     restart: unless-stopped
     ports:
       - "3000:80"

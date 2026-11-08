@@ -562,8 +562,29 @@ class SolverPage {
 
 const solver = new SolverPage();
 
+// Without SENTINEL_SOLVER_KEY only loopback / private-network callers are
+// accepted, so an exposed port cannot be used as an open solver.
+function isPrivateAddress(address) {
+  let ip = String(address || '').trim().toLowerCase();
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  if (ip === '::1' || ip === '127.0.0.1' || ip.startsWith('127.')) return true;
+  if (ip.startsWith('10.') || ip.startsWith('192.168.')) return true;
+  const m = /^172\.(\d+)\./.exec(ip);
+  if (m && Number(m[1]) >= 16 && Number(m[1]) <= 31) return true;
+  if (ip.startsWith('169.254.')) return true;
+  if (ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80:')) return true;
+  return false;
+}
+
 function requireKey(req) {
-  if (!SOLVER_KEY) return;
+  if (!SOLVER_KEY) {
+    if (!isPrivateAddress(req.socket && req.socket.remoteAddress)) {
+      const err = new Error('SENTINEL_SOLVER_KEY is not set: only loopback/private-network callers are allowed');
+      err.statusCode = 403;
+      throw err;
+    }
+    return;
+  }
   const supplied = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
   const got = Buffer.from(supplied);
   const want = Buffer.from(SOLVER_KEY);
@@ -705,6 +726,9 @@ process.on('SIGINT', () => { shutdown('SIGINT'); });
   } catch (err) {
     solver.lastError = errText(err);
     log('solver start failed:', solver.lastError);
+  }
+  if (!SOLVER_KEY) {
+    log('WARNING: SENTINEL_SOLVER_KEY is not set; requests are only accepted from loopback/private networks');
   }
   server.listen(PORT, '0.0.0.0', () => log(`listening on :${PORT}`));
 })();

@@ -3,7 +3,33 @@
 
 ## [Unreleased]
 
+### 变更（破坏性）
+
+- 产品更名为 **GPT Image**（面板标题、登录页、浏览器标题、README、日志启动信息、`container_name: gpt-image`）；Go 模块路径、仓库名、`CHATGPT2API_*` 环境变量与镜像名保持不变。
+- 改为单管理员：移除用户注册、用户管理、RBAC/角色、个人中心、按用户计费 UI、Linuxdo 登录残留、登录页图片设置与首页；对应后端路由删除（返回 404）。非管理员凭证不能再访问 `/api/*`。
+- 旧的 `/api/accounts/recover*` 同步找回接口由 `/api/recovery/*` 后台任务队列取代。
+
+### 新增
+
+- 独立 API Key（`/api/keys`）：名称、自定义/自动生成 Key、启用、过期、总/每日请求上限、图片数量上限、RPM、并发、模型白名单、用量统计与重置；仅存哈希；启动时自动迁移旧的用户绑定 Key（同哈希、无限额）。
+- 账号详情抽屉：查看/编辑注册凭证（密码可显示/复制）、读取最新邮件与验证码、刷新 Token、密码重登、邮箱验证码登录、粘贴 AT/Session 覆盖；凭证 JSON/CSV 导出（需确认）与导入（按邮箱 upsert，返回新增/更新/跳过）。
+- 持久化找回任务队列与自动自愈：可配置并发、实时状态、待填码批量提交、重试、取消、重启续跑；自愈带冷却/指数退避/每日上限。收码按域名路由到 cloudflare_temp_email（JWT + admin API 回落）/ outlookEmail（新增，仅找回用）/ gptmail，并校验验证码新鲜度。
+- 新管理端：侧边栏布局，仪表盘（号池状态、今日调用、各 Key 用量）、账号、API Key、找回任务、创作台、图库、日志、设置、注册机；深色模式。
+- 图像模型：新增 `gpt-image-2.6`、`gpt-image-2.6-flare`、`gpt-image-2.6-sunburst`，统一在 `internal/util/image_catalog.go` 一张表中维护，默认全部驱动 `auto`（网页通道没有按请求的图像模型，由上游选择 Images 2.6），驱动模型可在设置中修改；`/v1/models` 与前端选择器优先展示 2.6。Flare/Sunburst 与特定驱动模型（如 gpt-6 / gpt-6-thinking）的对应关系仅为推断，未经真实出图验证，因此默认不启用。
+
+### 安全
+
+- 账号 `password` 与 `mail_token` 使用 AES-256-GCM 静态加密（`CHATGPT2API_SECRET_KEY`，未设置时自动生成 `data/secret.key` 0600 并警告），明文自动迁移。
+- 设置接口对 `sentinel_solver_key`、邮箱 `admin_password`/`api_key`、outlookEmail `api_key` 返回掩码，提交掩码视为不修改。
+- sentinel_solver：未设置 `SENTINEL_SOLVER_KEY` 时只接受回环/私网来源请求并打印警告。
+
 ### 修复
+
+- `codex-gpt-image-2` 在网页通道映射到自身导致 prepare 拿不到 conduit token，现映射为 `auto`。
+- `deploy/docker-compose.yml` 默认镜像改为 `ghcr.io/sakuralaaa/gptchat2api-cf:latest`。
+- `sentinel_solver/Dockerfile` 按 `TARGETARCH` 下载对应架构的 gost。
+
+### 修复（此前）
 
 - 后端浏览器身份切换到 Firefox/Gecko 档：Cloudflare 的放行判定跟随 TLS/JA3 握手而不是 User-Agent，而 `surf` 的 Chrome 档位固定为 `JA().Chrome145()`，其握手会被 chatgpt.com 直接 403。默认 `impersonate` 改为 `firefox148`，User-Agent 同步换成 Gecko，并在 Gecko 身份下不再发送 `Sec-CH-UA*` 与 `Priority`（Firefox 本身不发这些头），避免「Firefox 握手 + Chrome 客户端提示」的身份错配。账号记录里自带 Chromium 指纹（`fp`/`impersonate`）时仍按原档位处理。
 - 账号维护链路（`remoteHeaders`、`remoteBootstrapHeaders`、刷新客户端、配额与上游维护请求）与对话链路使用同一套 Firefox/Gecko 身份与请求头。
