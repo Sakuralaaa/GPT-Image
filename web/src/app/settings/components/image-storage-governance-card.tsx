@@ -28,6 +28,7 @@ import {
   SettingsNotice,
   settingsPanelClassName,
 } from "./settings-ui";
+import { formatTime } from "@/lib/format";
 
 type CleanupAction = "retention" | "quota" | "thumbnails";
 
@@ -45,8 +46,28 @@ function formatBytes(value?: number) {
   return `${bytes} B`;
 }
 
-function formatTime(value?: string) {
-  return value && value.trim() ? value : "暂无数据";
+function formatStamp(value?: string) {
+  return value && value.trim() ? formatTime(value) : "暂无数据";
+}
+
+function EditorialValue({ value }: { value: string }) {
+  // Numbers set in serif tabular figures; units and separators stay small.
+  const parts = value.split(/(\d[\d.,:\/\- ]*\d|\d)/);
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 ? (
+          <span key={index} className="num font-serif text-[1.6rem] leading-none text-foreground">
+            {part}
+          </span>
+        ) : part.trim() ? (
+          <span key={index} className="mx-1 text-xs text-muted-foreground">
+            {part.trim()}
+          </span>
+        ) : null,
+      )}
+    </>
+  );
 }
 
 function StatBlock({
@@ -59,17 +80,12 @@ function StatBlock({
   tone?: "default" | "warning";
 }) {
   return (
-    <div
-      className={cn(
-        "flex min-h-20 flex-col justify-between rounded-[16px] border bg-background px-4 py-3 shadow-[0_4px_6px_rgba(0,0,0,0.04)]",
-        tone === "warning" ? "border-amber-200 bg-amber-50/70" : "border-border/80",
-      )}
-    >
-      <span className="text-xs leading-5 font-medium text-muted-foreground">
+    <div className="flex min-w-0 flex-col gap-2 border-t border-border pt-3">
+      <span className={cn("text-xs leading-5", tone === "warning" ? "text-amber-700" : "text-muted-foreground")}>
         {label}
       </span>
-      <span className="truncate text-lg leading-7 font-semibold text-foreground">
-        {value}
+      <span className="flex min-w-0 flex-wrap items-baseline">
+        <EditorialValue value={value} />
       </span>
     </div>
   );
@@ -88,12 +104,12 @@ function UsageBar({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3 text-xs leading-5">
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="shrink-0 text-muted-foreground">{formatBytes(value)}</span>
+        <span className="text-foreground">{label}</span>
+        <span className="num shrink-0 text-muted-foreground">{formatBytes(value)}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
+      <div className="h-[3px] overflow-hidden bg-border">
         <div
-          className="h-full rounded-full bg-[#2563eb]"
+          className="h-full bg-foreground"
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -172,12 +188,12 @@ export function ImageStorageGovernanceCard() {
     >
       <div className="flex flex-col gap-5">
         {isLoadingImageStorageGovernance && !governance ? (
-          <div className="flex items-center justify-center rounded-[16px] border border-border/80 bg-background py-10">
+          <div className="flex items-center justify-center py-10">
             <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            <section className="grid gap-3 sm:grid-cols-3">
+            <section className="grid gap-x-8 gap-y-5 sm:grid-cols-3">
               <StatBlock label="总占用" value={formatBytes(totalBytes)} />
               <StatBlock
                 label="容量上限"
@@ -211,7 +227,7 @@ export function ImageStorageGovernanceCard() {
               </div>
             </section>
 
-            <section className="grid gap-3 sm:grid-cols-2">
+            <section className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
               <StatBlock
                 label="图片数量"
                 value={`${governance?.images_count ?? 0} 张`}
@@ -230,21 +246,21 @@ export function ImageStorageGovernanceCard() {
               />
               <StatBlock
                 label="最早图片"
-                value={formatTime(governance?.oldest_image_at)}
+                value={formatStamp(governance?.oldest_image_at)}
               />
               <StatBlock
                 label="最新图片"
-                value={formatTime(governance?.latest_image_at)}
+                value={formatStamp(governance?.latest_image_at)}
               />
             </section>
           </>
         )}
 
-        <section className="grid gap-2 sm:grid-cols-3">
+        <section className="flex flex-wrap gap-2">
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            
             onClick={() => setCleanupAction("thumbnails")}
             disabled={isCleaningImageStorage || (governance?.thumbnail_files ?? 0) === 0}
           >
@@ -254,7 +270,7 @@ export function ImageStorageGovernanceCard() {
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            
             onClick={() => setCleanupAction("retention")}
             disabled={isCleaningImageStorage || (governance?.images_count ?? 0) === 0}
           >
@@ -264,7 +280,7 @@ export function ImageStorageGovernanceCard() {
           <Button
             type="button"
             variant={overLimit ? "destructive" : "outline"}
-            className="min-h-11"
+            
             onClick={() => setCleanupAction("quota")}
             disabled={isCleaningImageStorage || limitMb <= 0 || (governance?.images_count ?? 0) === 0}
           >

@@ -19,6 +19,7 @@ import {
   SettingsNotice,
   settingsListItemClassName,
 } from "./settings-ui";
+import { formatTime } from "@/lib/format";
 
 export function CPAPoolsCard() {
   const pools = useSettingsStore((state) => state.pools);
@@ -94,7 +95,7 @@ export function CPAPoolsCard() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                       
                         onClick={() => void deletePool(pool)}
                         disabled={isBusy}
                         title="删除"
@@ -141,7 +142,7 @@ export function CPAPoolsCard() {
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                               任务 {importJob.job_id.slice(0, 8)} ·{" "}
-                              {importJob.created_at}
+                              {formatTime(importJob.created_at)}
                             </div>
                           </div>
                           <Badge
@@ -180,7 +181,7 @@ export function CPAPoolsCard() {
 
         <SettingsNotice>
           <p className="font-medium text-foreground">使用说明</p>
-          <ul className="mt-1 list-inside list-disc">
+          <ul className="mt-1 list-outside list-disc space-y-1 pl-5 marker:text-muted-foreground">
             <li>页面进入后先读取系统里已配置的 CPA 连接。</li>
             <li>
               点击某个连接的「同步」后，会先读取远程账号列表并展示给前端选择。

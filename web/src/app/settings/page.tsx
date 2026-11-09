@@ -50,7 +50,7 @@ function SettingsDataController() {
 }
 
 function SettingsMasonryItem({ children }: { children: ReactNode }) {
-  return <div className="mb-5 break-inside-avoid">{children}</div>;
+  return <div>{children}</div>;
 }
 
 function AdminSettingsPageContent({
@@ -59,10 +59,10 @@ function AdminSettingsPageContent({
   canManageSystem: boolean;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5 pb-8">
+    <div className="flex w-full flex-col gap-8 pb-8">
       <SettingsDataController />
       <SettingsHeader />
-      <section className="columns-1 gap-5 md:columns-2">
+      <section className="flex flex-col gap-12">
         <SettingsMasonryItem>
           <ConfigCard />
         </SettingsMasonryItem>

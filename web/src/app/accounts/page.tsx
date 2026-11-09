@@ -638,15 +638,13 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
 
   const renderStatusBadge = (account: Account) => {
     const status = statusMeta[account.status];
-    const StatusIcon = status.icon;
     return (
       <>
-        <Badge variant={status.badge} className="inline-flex items-center gap-1 rounded-md px-2 py-1">
-          <StatusIcon className="size-3.5" />
+        <Badge variant={status.badge}>
           {account.status}
         </Badge>
         {account.enabled === false ? (
-          <Badge variant="secondary" className="inline-flex items-center gap-1 rounded-md px-2 py-1">
+          <Badge variant="secondary" className="">
             <Ban className="size-3.5" />
             已禁用
           </Badge>
@@ -673,7 +671,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
 
     return (
       <div className="flex min-w-0 items-center gap-1.5">
-        <code className="truncate rounded-md bg-stone-100 px-2 py-1 font-mono text-[11px] font-medium text-muted-foreground">
+        <code className="truncate font-mono text-xs text-muted-foreground">
           {secondaryLabel}
         </code>
         {canExportTokens && account.access_token ? (
@@ -681,7 +679,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="size-6 text-muted-foreground hover:text-foreground"
             onClick={() => copyToClipboard(account.access_token || "", "token 已复制")}
             aria-label="复制 Token"
             title="复制 Token"
@@ -698,13 +696,13 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
     const rowTogglingEnabled = togglingAccountIdSet.has(account.id);
     const nextEnabled = account.enabled === false;
     return (
-      <div className={cn("flex items-center gap-1 text-muted-foreground", className)}>
+      <div className={cn("flex items-center gap-0 text-muted-foreground", className)}>
         {canToggleAccountEnabled ? (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 rounded-lg hover:bg-muted hover:text-foreground"
+            className="hover:text-foreground"
             onClick={() => void handleToggleAccountsEnabled([account.id], nextEnabled)}
             disabled={isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
             aria-label={nextEnabled ? "启用账号" : "禁用账号"}
@@ -723,7 +721,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8 rounded-lg hover:bg-muted hover:text-foreground"
+          className="hover:text-foreground"
           onClick={() => setDetailId(account.id)}
           aria-label="账号详情与凭证"
           title="账号详情与凭证"
@@ -735,7 +733,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 rounded-lg hover:bg-muted hover:text-foreground"
+            className="hover:text-foreground"
             onClick={() => openEditDialog(account)}
             disabled={isUpdating || isRunningUpstreamActions || isTogglingEnabled}
             aria-label="编辑账号"
@@ -749,7 +747,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 rounded-lg hover:bg-muted hover:text-foreground"
+            className="hover:text-foreground"
             onClick={() => void handleRefreshAccounts([account.id])}
             disabled={isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
             aria-label="刷新账号信息和额度"
@@ -763,7 +761,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+            className="size-9"
             onClick={() => void handleDeleteAccounts([account.id])}
             disabled={isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
             aria-label="删除账号"
@@ -781,11 +779,12 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
       <PageHeader
         eyebrow="Account Pool"
         title="号池管理"
+        dek="ChatGPT 账号池：凭据加密存储，支持批量导入导出、刷新额度与加入找回。"
         actions={
           <>
             <Button
               variant="outline"
-              className="h-10 rounded-lg"
+              
               onClick={() => void loadAccounts()}
               disabled={isLoading || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
             >
@@ -795,7 +794,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             {canRefreshAccounts ? (
               <Button
                 variant="outline"
-                className="h-10 rounded-lg"
+                
                 onClick={() => setRefreshAllDialogOpen(true)}
                 disabled={isLoading || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled || accounts.length === 0}
               >
@@ -818,7 +817,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             {canExportTokens ? (
               <Button
                 variant="outline"
-                className="h-10 rounded-lg"
+                
                 onClick={() => void handleExportTokens()}
                 disabled={accounts.length === 0 || isExporting || isTogglingEnabled}
               >
@@ -876,7 +875,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             <div className="space-y-2">
               <label className="text-sm font-medium text-stone-700">状态</label>
               <Select value={editStatus} onValueChange={(value) => setEditStatus(value as AccountStatus)}>
-                <SelectTrigger className="h-11 rounded-xl border-stone-200 bg-white">
+                <SelectTrigger className="h-9 border-stone-200 bg-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -891,7 +890,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             <div className="space-y-2">
               <label className="text-sm font-medium text-stone-700">类型</label>
               <Select value={editType} onValueChange={(value) => setEditType(value as AccountType)}>
-                <SelectTrigger className="h-11 rounded-xl border-stone-200 bg-white">
+                <SelectTrigger className="h-9 border-stone-200 bg-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -910,7 +909,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
               <Input
                 value={editQuota}
                 onChange={(event) => setEditQuota(event.target.value)}
-                className="h-11 rounded-xl border-stone-200 bg-white"
+                className="h-9 border-stone-200 bg-white"
               />
             </div>
             {canRunUpstreamActions ? (
@@ -925,7 +924,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 rounded-xl bg-white px-3 text-stone-700 hover:bg-stone-100"
+                    className="px-3"
                     onClick={() =>
                       void handleSingleUpstreamAction({
                         disable_memory: true,
@@ -942,7 +941,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 rounded-xl bg-white px-3 text-stone-700 hover:bg-stone-100"
+                    className="px-3"
                     onClick={() =>
                       void handleSingleUpstreamAction({
                         disable_memory: false,
@@ -959,7 +958,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 rounded-xl border-rose-200 bg-white px-3 text-rose-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+                    className="px-3"
                     onClick={() =>
                       void handleSingleUpstreamAction({
                         disable_memory: false,
@@ -982,7 +981,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                     max="100"
                     value={upstreamActionFilePageLimit}
                     onChange={(event) => setUpstreamActionFilePageLimit(event.target.value)}
-                    className="h-11 rounded-xl border-stone-200 bg-white"
+                    className="h-9 border-stone-200 bg-white"
                     disabled={isRunningUpstreamActions}
                   />
                 </div>
@@ -992,14 +991,14 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
           <DialogFooter className="pt-2">
             <Button
               variant="secondary"
-              className="h-10 rounded-xl bg-stone-100 px-5 text-stone-700 hover:bg-stone-200"
+              className="px-5"
               onClick={() => setEditingAccount(null)}
               disabled={isUpdating || isRunningUpstreamActions || isTogglingEnabled}
             >
               取消
             </Button>
             <Button
-              className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+              className="px-5"
               onClick={() => void handleUpdateAccount()}
               disabled={isUpdating || isRunningUpstreamActions || !canUpdateAccount}
             >
@@ -1071,7 +1070,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   max="100"
                   value={upstreamActionFilePageLimit}
                   onChange={(event) => setUpstreamActionFilePageLimit(event.target.value)}
-                  className="h-11 rounded-xl border-stone-200 bg-white"
+                  className="h-9 border-stone-200 bg-white"
                   disabled={!upstreamActionDeleteFiles || isRunningUpstreamActions}
                 />
               </div>
@@ -1080,14 +1079,14 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
           <DialogFooter className="pt-2">
             <Button
               variant="secondary"
-              className="h-10 rounded-xl bg-stone-100 px-5 text-stone-700 hover:bg-stone-200"
+              className="px-5"
               onClick={() => setUpstreamActionDialogOpen(false)}
               disabled={isRunningUpstreamActions}
             >
               取消
             </Button>
             <Button
-              className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+              className="px-5"
               onClick={() => void handleBatchUpstreamActions()}
               disabled={
                 isRunningUpstreamActions ||
@@ -1103,40 +1102,26 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
         </DialogContent>
       </Dialog>
 
-      <section className="mt-5 flex flex-col gap-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-          {metricCards.map((item) => {
-            const Icon = item.icon;
-            const value = summary[item.key];
-            return (
-              <Card key={item.key} className="overflow-hidden rounded-[18px] bg-white/92 shadow-[0_8px_24px_rgba(24,40,72,0.06)]">
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-[12px]", item.iconClassName)}>
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-muted-foreground">{item.label}</div>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="font-display text-2xl leading-none font-semibold text-foreground">
-                        {typeof value === "number" ? formatCompact(value) : value}
-                      </span>
-                    </div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">{item.description}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+      <section className="grid grid-cols-3 border-y border-rule-strong">
+        {metricCards.map((item) => {
+          const value = summary[item.key];
+          return (
+            <div key={item.key} className="flex min-w-0 flex-col gap-1.5 border-b border-border px-6 py-5 [&:nth-child(3n+1)]:pl-0 [&:not(:nth-child(3n+1))]:border-l [&:nth-last-child(-n+3)]:border-b-0">
+              <div className="text-xs text-muted-foreground">{item.label}</div>
+              <span className="num font-serif text-[2.25rem] leading-none text-foreground">
+                {typeof value === "number" ? formatCompact(value) : value}
+              </span>
+              <div className="truncate text-xs text-muted-foreground">{item.description}</div>
+            </div>
+          );
+        })}
       </section>
 
-      <section className="mt-6 flex flex-col gap-4">
+      <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold tracking-tight">账户列表</h2>
-            <Badge variant="secondary" className="rounded-lg bg-stone-200 px-2 py-0.5 text-stone-700">
-              {filteredAccounts.length}
-            </Badge>
+            <h2 className="font-serif text-xl font-medium">账户列表</h2>
+            <span className="num text-sm text-muted-foreground">{filteredAccounts.length}</span>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-[minmax(16rem,1fr)_10rem_10rem] lg:min-w-[38rem]">
@@ -1149,7 +1134,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   setPage(1);
                 }}
                 placeholder="搜索邮箱"
-                className="h-10 rounded-lg pl-10"
+                className="pl-9"
               />
             </div>
             <Select
@@ -1159,7 +1144,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="h-10 w-full rounded-lg">
+              <SelectTrigger className="h-9 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1177,7 +1162,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="h-10 w-full rounded-lg">
+              <SelectTrigger className="h-9 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1205,27 +1190,22 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
           </Card>
         ) : null}
 
-        <Card
-          className={cn(
-            "overflow-hidden",
-            isLoading && accounts.length === 0 ? "hidden" : "",
-          )}
-        >
-          <CardContent className="p-0">
-            <div className="flex flex-col gap-3 border-b border-stone-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className={cn(isLoading && accounts.length === 0 ? "hidden" : "")}>
+          <div>
+            <div className="flex flex-col gap-3 border-t border-rule-strong py-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2 rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
+                <label className="mr-2 flex h-9 cursor-pointer md:hidden items-center gap-2 text-[13px] text-foreground">
                   <Checkbox
                     checked={allCurrentSelected}
                     onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
                     aria-label="选择当前页账号"
                   />
                   当前页全选
-                </div>
+                </label>
                 {canRefreshAccounts ? (
                   <Button
-                    variant="ghost"
-                    className="h-8 rounded-lg px-3 text-stone-600 hover:bg-stone-100"
+                    variant="outline"
+                    size="sm"
                     onClick={() => void handleRefreshAccounts(selectedAccountIds)}
                     disabled={selectedAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                   >
@@ -1237,18 +1217,18 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant="ghost"
-                        className="h-8 rounded-lg px-3 text-stone-600 hover:bg-stone-100"
+                        variant="outline"
+                        size="sm"
                         disabled={selectedAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                       >
                         {isTogglingEnabled ? <LoaderCircle className="size-4 animate-spin" /> : <Power className="size-4" />}
                         批量启停
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-36 rounded-xl p-1">
+                    <PopoverContent align="start" className="w-36 p-1">
                       <Button
                         variant="ghost"
-                        className="h-9 w-full justify-start rounded-lg px-3 text-stone-700"
+                        className="h-9 w-full justify-start px-3"
                         onClick={() => void handleToggleAccountsEnabled(selectedAccountIds, true)}
                         disabled={selectedAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                       >
@@ -1257,7 +1237,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                       </Button>
                       <Button
                         variant="ghost"
-                        className="h-9 w-full justify-start rounded-lg px-3 text-stone-700"
+                        className="h-9 w-full justify-start px-3"
                         onClick={() => void handleToggleAccountsEnabled(selectedAccountIds, false)}
                         disabled={selectedAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                       >
@@ -1269,8 +1249,8 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 ) : null}
                 {canRunUpstreamActions ? (
                   <Button
-                    variant="ghost"
-                    className="h-8 rounded-lg px-3 text-[#1456f0] hover:bg-[#edf4ff] hover:text-[#1456f0]"
+                    variant="outline"
+                    size="sm"
                     onClick={() => openUpstreamActionDialog(selectedAccountIds)}
                     disabled={selectedAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                   >
@@ -1281,8 +1261,8 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 {canDeleteAccounts ? (
                   <>
                     <Button
-                      variant="ghost"
-                      className="h-8 rounded-lg px-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                      variant="outline"
+                      size="sm"
                       onClick={() => void handleDeleteAccounts(abnormalAccountIds)}
                       disabled={abnormalAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                     >
@@ -1290,8 +1270,8 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                       移除异常账号
                     </Button>
                     <Button
-                      variant="ghost"
-                      className="h-8 rounded-lg px-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                      variant="outline"
+                      size="sm"
                       onClick={() => void handleDeleteAccounts(selectedAccountIds)}
                       disabled={selectedAccountIds.length === 0 || isRefreshing || isDeleting || isRunningUpstreamActions || isTogglingEnabled}
                     >
@@ -1299,8 +1279,8 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                       删除所选
                     </Button>
                     <Button
-                      variant="ghost"
-                      className="h-8 rounded-lg px-3"
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         void createRecoveryJob({ account_ids: selectedAccountIds })
                           .then(() => {
@@ -1317,7 +1297,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   </>
                 ) : null}
                 {selectedIds.length > 0 ? (
-                  <span className="rounded-lg bg-[#edf4ff] px-2.5 py-1 text-xs font-medium text-[#1456f0]">
+                  <span className="ml-2 text-[13px] text-oxblood">
                     已选择 {selectedIds.length} 项
                   </span>
                 ) : null}
@@ -1325,12 +1305,9 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             </div>
 
             {showInitialEmptyState ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-                <div className="rounded-[16px] bg-[#edf4ff] p-4 text-[#1456f0] ring-1 ring-blue-100">
-                  <UserRound className="size-7" />
-                </div>
+              <div className="flex flex-col items-start border-t border-border py-6 text-left">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">暂无账号</p>
+                  <p className="font-serif text-lg text-foreground">暂无账号</p>
                   <p className="max-w-[28rem] text-sm leading-6 text-muted-foreground">
                     导入 Token 后，账号状态、类型、额度和调用统计会在这里显示。
                   </p>
@@ -1351,8 +1328,8 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                         </TableHead>
                         <TableHead className="w-[34%]">账号</TableHead>
                         <TableHead className="w-48">状态 / 类型</TableHead>
-                        <TableHead className="w-32">额度</TableHead>
-                        <TableHead className="w-44">恢复时间</TableHead>
+                        <TableHead className="w-24 text-right">额度</TableHead>
+                        <TableHead className="w-44 pl-8">恢复时间</TableHead>
                         <TableHead className="w-36">调用</TableHead>
                         <TableHead className="w-28 text-right">操作</TableHead>
                       </TableRow>
@@ -1378,17 +1355,13 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-1.5">
                               {renderStatusBadge(account)}
-                              <Badge variant="secondary" className="rounded-md px-2 py-1">
+                              <Badge variant="secondary">
                                 {account.type}
                               </Badge>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="info" className="rounded-md px-2 py-1">
-                              {formatQuota(account)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{renderRestoreInfo(account)}</TableCell>
+                          <TableCell className="text-right text-foreground">{formatQuota(account)}</TableCell>
+                          <TableCell className="pl-8">{renderRestoreInfo(account)}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1 text-xs leading-5">
                               <span className="text-emerald-700">成功 {account.success}</span>
@@ -1396,7 +1369,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {renderAccountActions(account, "justify-end")}
+                            {renderAccountActions(account, "-mr-2.5 justify-end")}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1428,10 +1401,10 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
 
                             <div className="mt-3 flex flex-wrap items-center gap-1.5">
                               {renderStatusBadge(account)}
-                              <Badge variant="secondary" className="rounded-md px-2 py-1">
+                              <Badge variant="secondary">
                                 {account.type}
                               </Badge>
-                              <Badge variant="info" className="rounded-md px-2 py-1">
+                              <Badge variant="info">
                                 额度 {formatQuota(account)}
                               </Badge>
                             </div>
@@ -1467,15 +1440,15 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                   </div>
                 ) : null}
 
-            <div className="border-t border-stone-100 px-4 py-4">
-              <div className="flex items-center justify-center gap-3 overflow-x-auto whitespace-nowrap">
-                <div className="shrink-0 text-sm text-stone-500">
+            <div className="pt-4">
+              <div className="flex items-center justify-end gap-2 overflow-x-auto whitespace-nowrap">
+                <div className="mr-auto shrink-0 text-[13px] text-muted-foreground">
                 显示第 {filteredAccounts.length === 0 ? 0 : startIndex + 1} -{" "}
                 {Math.min(startIndex + Number(pageSize), filteredAccounts.length)} 条，共{" "}
                 {filteredAccounts.length} 条
                 </div>
 
-                <span className="shrink-0 text-sm leading-none text-stone-500">
+                <span className="mr-2 shrink-0 text-[13px] text-muted-foreground">
                   {safePage} / {pageCount} 页
                 </span>
                 <Select
@@ -1485,7 +1458,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-10 w-[108px] shrink-0 rounded-lg border-stone-200 bg-white text-sm leading-none">
+                  <SelectTrigger className="w-[104px] shrink-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1498,7 +1471,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="size-10 shrink-0 rounded-lg border-stone-200 bg-white"
+                  className="shrink-0"
                   disabled={safePage <= 1}
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 >
@@ -1513,12 +1486,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                     <Button
                       key={item}
                       variant={item === safePage ? "default" : "outline"}
-                      className={cn(
-                        "h-10 min-w-10 shrink-0 rounded-lg px-3",
-                        item === safePage
-                          ? "bg-stone-950 text-white hover:bg-stone-800"
-                          : "border-stone-200 bg-white text-stone-700",
-                      )}
+                      className="min-w-9 shrink-0 px-3"
                       onClick={() => setPage(item)}
                     >
                       {item}
@@ -1528,7 +1496,7 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="size-10 shrink-0 rounded-lg border-stone-200 bg-white"
+                  className="shrink-0"
                   disabled={safePage >= pageCount}
                   onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}
                 >
@@ -1538,8 +1506,8 @@ function AccountsPageContent({ session }: { session: StoredAuthSession }) {
             </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
       <AccountDetailDrawer
         key={detailId ?? "closed"}

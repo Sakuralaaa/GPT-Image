@@ -64,11 +64,11 @@ export function AccountCredentialsDialog({ selectedIds, onImported }: Props) {
 
   return (
     <>
-      <Button variant="outline" className="h-10 rounded-lg" onClick={() => setExportOpen(true)}>
+      <Button variant="outline" onClick={() => setExportOpen(true)}>
         <Download className="size-4" />
         导出凭证{selectedIds.length ? `（${selectedIds.length}）` : ""}
       </Button>
-      <Button variant="outline" className="h-10 rounded-lg" onClick={() => { setResult(null); setImportOpen(true); }}>
+      <Button variant="outline" onClick={() => { setResult(null); setImportOpen(true); }}>
         <FileUp className="size-4" />
         导入凭证
       </Button>

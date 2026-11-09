@@ -20,7 +20,7 @@ export function BaseUrlCard() {
 
   return (
     <Card>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-6 pt-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-stone-100">
@@ -48,14 +48,14 @@ export function BaseUrlCard() {
                 value={baseUrl}
                 onChange={(event) => setBaseUrl(event.target.value)}
                 placeholder="https://example.com"
-                className="h-11 rounded-xl border-stone-200 bg-white"
+                className="h-9 border-stone-200 bg-white"
               />
               <p className="text-sm text-stone-500">留空则使用环境变量或默认值，保存时会自动去掉首尾空格。</p>
             </div>
 
             <div className="flex justify-end">
               <Button
-                className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+                className="px-5"
                 onClick={() => void saveConfig()}
                 disabled={isSavingConfig}
               >

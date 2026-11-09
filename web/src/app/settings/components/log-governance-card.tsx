@@ -47,11 +47,11 @@ function formatLogTime(value?: string) {
 
 function StatBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-h-20 flex-col justify-between rounded-[16px] border border-border/80 bg-background px-4 py-3 shadow-[0_4px_6px_rgba(0,0,0,0.04)]">
-      <span className="text-xs leading-5 font-medium text-muted-foreground">
+    <div className="flex min-w-0 flex-col gap-2 border-t border-border pt-3">
+      <span className="text-xs leading-5 text-muted-foreground">
         {label}
       </span>
-      <span className="truncate text-lg leading-7 font-semibold text-foreground">
+      <span className="num truncate font-serif text-[1.6rem] leading-none text-foreground">
         {value}
       </span>
     </div>
@@ -68,7 +68,7 @@ function LogLevelOption({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-10 min-w-0 items-center gap-2.5 rounded-[12px] border border-border/70 bg-background/75 px-3 py-2 text-sm font-medium text-foreground">
+    <label className="flex min-h-10 min-w-0 items-center gap-2.5 rounded-sm border border-border px-3 py-2 text-sm text-foreground">
       <Checkbox
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(Boolean(value))}
@@ -272,11 +272,11 @@ export function LogGovernanceCard() {
             </Button>
           </div>
           {isLoadingLogGovernance ? (
-            <div className="flex items-center justify-center rounded-[16px] border border-border/80 bg-background py-8">
+            <div className="flex items-center justify-center py-8">
               <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-x-8 gap-y-5 sm:grid-cols-3">
               <StatBlock label="日志总量" value={String(total)} />
               <StatBlock
                 label="最早日志"

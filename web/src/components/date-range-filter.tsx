@@ -44,7 +44,7 @@ export function DateRangeFilter({ startDate, endDate, onChange, className }: Dat
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="h-10 w-full min-w-0 justify-start rounded-lg px-3 font-normal dark:border-border dark:bg-background/70 dark:text-foreground dark:hover:bg-accent/60"
+            className="w-full min-w-0 justify-start px-3 font-normal"
           >
             <CalendarIcon className="size-4 shrink-0 text-muted-foreground dark:text-muted-foreground" />
             <span className="truncate">{label}</span>

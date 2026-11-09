@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fetchSettingsConfig, fetchSystemLogs, type LogView, type SystemLog, type SystemLogFilters } from "@/lib/api";
 import { useAuthGuard } from "@/lib/use-auth-guard";
+import { formatTime } from "@/lib/format";
 
 const methodOptions = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const statusOptions = ["200", "201", "400", "401", "403", "404", "422", "429", "500", "502"];
@@ -382,14 +383,14 @@ function LogsContent() {
   }, [isDefaultLogViewReady, loadLogs, query]);
 
   return (
-    <section className="flex flex-col gap-5">
-      <PageHeader eyebrow="Logs" title="日志管理" />
+    <section className="flex flex-col gap-8">
+      <PageHeader eyebrow="Logs" title="日志" dek="调用、账号与系统事件记录，可按时间与类型筛选。" />
 
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle>筛选条件</CardTitle>
+        <CardHeader className="pt-3 pb-4">
+          <CardTitle className="text-xl">筛选条件</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-0">
           <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" onSubmit={handleSearch}>
             <Select value={normalizeLogView(filters.view)} onValueChange={(value) => updateFilter("view", value)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -434,11 +435,11 @@ function LogsContent() {
               />
             </div>
             <div className="flex gap-2 md:col-span-2 xl:col-span-2">
-              <Button type="submit" disabled={isLoading} className="h-10 rounded-lg">
+              <Button type="submit" disabled={isLoading}>
                 {isLoading ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />}
                 查询
               </Button>
-              <Button type="button" variant="outline" onClick={clearFilters} className="h-10 rounded-lg">
+              <Button type="button" variant="outline" onClick={clearFilters}>
                 <X className="size-4" />
                 清空
               </Button>
@@ -447,11 +448,11 @@ function LogsContent() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden">
+      <Card>
         <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4 text-sm text-muted-foreground">
+          <div className="flex items-center justify-between py-3 text-sm text-muted-foreground">
             <span>共 {items.length} 条</span>
-            <Button variant="ghost" className="h-8 rounded-lg px-3" onClick={() => void loadLogs(query)} disabled={isLoading}>
+            <Button variant="outline" onClick={() => void loadLogs(query)} disabled={isLoading}>
               <RefreshCw className={`size-4 ${isLoading ? "animate-spin" : ""}`} />
               刷新
             </Button>
@@ -465,9 +466,9 @@ function LogsContent() {
                   <TableHead>模块</TableHead>
                   <TableHead>接口</TableHead>
                   <TableHead>状态</TableHead>
-                  <TableHead>耗时</TableHead>
-                  <TableHead>摘要</TableHead>
-                  <TableHead className="w-28">详情</TableHead>
+                  <TableHead className="text-right">耗时</TableHead>
+                  <TableHead className="pl-8">摘要</TableHead>
+                  <TableHead className="w-28 text-right">详情</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -476,25 +477,25 @@ function LogsContent() {
                   const level = logLevel(item);
                   return (
                     <TableRow key={`${item.time}-${index}`} className="text-muted-foreground">
-                      <TableCell className="whitespace-nowrap">{item.time}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatTime(item.time)}</TableCell>
                       <TableCell className="max-w-[150px] truncate text-foreground">{actorText(item)}</TableCell>
-                      <TableCell><Badge variant="secondary" className="rounded-md">{moduleText(item)}</Badge></TableCell>
+                      <TableCell><Badge variant="secondary">{moduleText(item)}</Badge></TableCell>
                       <TableCell className="max-w-[260px]">
                         <div className="flex min-w-0 items-center gap-2">
-                          {method ? <Badge variant={methodBadgeVariant(method)} className="rounded-md">{method}</Badge> : null}
+                          {method ? <Badge variant={methodBadgeVariant(method)}>{method}</Badge> : null}
                           <span className="truncate">{pathText(item)}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Badge variant={statusBadgeVariant(item)} className="rounded-md">{statusText(item)}</Badge>
-                          <Badge variant={levelBadgeVariant(level)} className="rounded-md">{level}</Badge>
+                          <Badge variant={statusBadgeVariant(item)}>{statusText(item)}</Badge>
+                          <Badge variant={levelBadgeVariant(level)}>{level}</Badge>
                         </div>
                       </TableCell>
-                      <TableCell>{formatDuration(item)}</TableCell>
-                      <TableCell className="max-w-[300px] truncate text-muted-foreground">{item.summary || "-"}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" className="h-8 rounded-lg px-3" onClick={() => openDetail(item)}>
+                      <TableCell className="text-right">{formatDuration(item)}</TableCell>
+                      <TableCell className="max-w-[300px] truncate pl-8 text-muted-foreground">{item.summary || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="-mr-3" onClick={() => openDetail(item)}>
                           查看详情
                         </Button>
                       </TableCell>
@@ -504,12 +505,12 @@ function LogsContent() {
               </TableBody>
             </Table>
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3 text-sm text-muted-foreground">
-            <span>第 {safePage} / {pageCount} 页，共 {items.length} 条</span>
-            <Button variant="outline" size="icon" className="size-9 rounded-lg" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+          <div className="flex items-center justify-end gap-2 pt-4 text-[13px] text-muted-foreground">
+            <span className="mr-2">第 {safePage} / {pageCount} 页，共 {items.length} 条</span>
+            <Button variant="outline" size="icon" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
               <ChevronLeft className="size-4" />
             </Button>
-            <Button variant="outline" size="icon" className="size-9 rounded-lg" disabled={safePage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
+            <Button variant="outline" size="icon" disabled={safePage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
               <ChevronRight className="size-4" />
             </Button>
           </div>
@@ -524,13 +525,13 @@ function LogsContent() {
               <div className="min-w-0 space-y-2">
                 <DialogTitle>日志详情</DialogTitle>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="secondary" className="rounded-md">{moduleText(detailLog)}</Badge>
-                  <Badge variant={statusBadgeVariant(detailLog)} className="rounded-md">{statusText(detailLog)}</Badge>
-                  <Badge variant={levelBadgeVariant(logLevel(detailLog))} className="rounded-md">{logLevel(detailLog)}</Badge>
-                  <span>{detailLog?.time || "—"}</span>
+                  <Badge variant="secondary">{moduleText(detailLog)}</Badge>
+                  <Badge variant={statusBadgeVariant(detailLog)}>{statusText(detailLog)}</Badge>
+                  <Badge variant={levelBadgeVariant(logLevel(detailLog))}>{logLevel(detailLog)}</Badge>
+                  <span>{formatTime(detailLog?.time)}</span>
                 </div>
               </div>
-              <Button type="button" variant="outline" className="h-9 rounded-lg px-3" onClick={() => void handleCopyDetailJSON()}>
+              <Button type="button" variant="outline" className="h-9 px-3" onClick={() => void handleCopyDetailJSON()}>
                 <Copy className="size-4" />
                 复制 JSON
               </Button>
@@ -600,7 +601,7 @@ function LogsContent() {
                 <section className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-foreground">图片结果</div>
-                    <Badge variant="secondary" className="rounded-md">{detailUrls.length} 张</Badge>
+                    <Badge variant="secondary">{detailUrls.length} 张</Badge>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                     {detailUrls.map((url, index) => (

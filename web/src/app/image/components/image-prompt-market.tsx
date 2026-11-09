@@ -577,7 +577,7 @@ export function ImagePromptMarket({ open, onOpenChange, onApplyPrompt }: ImagePr
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
                   placeholder="搜索提示词"
-                  className="h-10 pl-9"
+                  className="h-9 pl-9"
                 />
               </div>
               <button
@@ -626,7 +626,7 @@ export function ImagePromptMarket({ open, onOpenChange, onApplyPrompt }: ImagePr
                 <Button
                   type="button"
                   variant="outline"
-                  className="col-span-2 h-9 rounded-full border-[#e5e7eb] bg-white text-xs text-[#45515e] shadow-none"
+                  className="col-span-2 h-9 border-[#e5e7eb] text-xs text-[#45515e]"
                   onClick={resetFilters}
                   disabled={activeFilterCount === 0}
                 >
@@ -675,7 +675,7 @@ export function ImagePromptMarket({ open, onOpenChange, onApplyPrompt }: ImagePr
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full"
+               
                 onClick={loadPromptData}
               >
                 <RefreshCcw className="size-4" />
@@ -795,7 +795,7 @@ export function ImagePromptMarket({ open, onOpenChange, onApplyPrompt }: ImagePr
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 rounded-full border-[#e5e7eb] px-3 text-xs text-[#45515e] hover:bg-black/[0.05] hover:text-[#18181b]"
+                            className="h-9 border-[#e5e7eb] px-3 text-xs text-[#45515e] hover:bg-black/[0.05] hover:text-[#18181b]"
                             onClick={() => void copyPromptJSON(localizedPrompt)}
                           >
                             <ClipboardCopy className="size-3.5" />
@@ -804,7 +804,7 @@ export function ImagePromptMarket({ open, onOpenChange, onApplyPrompt }: ImagePr
                           <Button
                             type="button"
                             size="sm"
-                            className="h-8 rounded-full bg-[#1456f0] px-4 text-xs text-white shadow-sm hover:bg-[#2563eb]"
+                            className="h-9 bg-[#1456f0] px-4 text-xs hover:bg-[#2563eb]"
                             onClick={() => void onApplyPrompt(localizedPrompt)}
                           >
                             套用
@@ -820,7 +820,7 @@ export function ImagePromptMarket({ open, onOpenChange, onApplyPrompt }: ImagePr
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-full"
+                   
                     onClick={() => setVisibleCount((current) => current + VISIBLE_COUNT_STEP)}
                   >
                     加载更多 ({visiblePrompts.length}/{filteredPrompts.length})

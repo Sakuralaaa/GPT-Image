@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, KeyRound, LoaderCircle, MoonStar, Sun, UserRound } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,6 @@ import { authSessionFromLoginResponse, setVerifiedAuthSession } from "@/lib/sess
 import { applyColorTheme, getPreferredColorTheme, saveColorTheme, type ColorTheme } from "@/lib/theme";
 import { useRedirectIfAuthenticated } from "@/lib/use-auth-guard";
 import { getDefaultRouteForSession } from "@/store/auth";
-
-const loginBackgroundClass =
-  "bg-[radial-gradient(rgba(20,86,240,0.10)_1px,transparent_1px),linear-gradient(145deg,#f8faff_0%,#ffffff_48%,#f4f8ff_100%)] [background-size:14px_14px,cover] dark:bg-[radial-gradient(rgba(96,165,250,0.14)_1px,transparent_1px),linear-gradient(145deg,#080b13_0%,#101827_52%,#070b12_100%)]";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -60,46 +57,54 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`${loginBackgroundClass} fixed inset-0 z-50 flex min-h-svh items-center justify-center px-4`}>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="fixed right-4 top-4 rounded-full border border-border/60 bg-background/80 p-2 shadow-sm backdrop-blur"
-        aria-label="切换主题"
-      >
-        {theme === "dark" ? <Sun className="size-4" /> : <MoonStar className="size-4" />}
-      </button>
-      {isCheckingAuth ? (
-        <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
-      ) : (
-        <form
-          className="w-full max-w-sm rounded-2xl border border-border/60 bg-background/90 p-8 shadow-xl backdrop-blur"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSubmit();
-          }}
-        >
-          <div className="mb-6 flex flex-col items-center gap-2 text-center">
-            <img src="/logo-mark.svg" alt="" className="size-10" />
-            <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
-            <p className="text-sm text-muted-foreground">管理员登录</p>
+    <div className="fixed inset-0 z-50 flex min-h-svh flex-col bg-background text-foreground">
+      <header className="flex h-16 items-center justify-between border-b border-border px-6 sm:px-10">
+        <span className="font-serif text-[22px] font-medium tracking-tight">{APP_NAME}</span>
+        <button type="button" onClick={toggleTheme} className="text-[13px] text-muted-foreground hover:text-foreground" aria-label="切换主题">
+          {theme === "dark" ? "浅色" : "深色"}
+        </button>
+      </header>
+      <div className="flex flex-1 items-center justify-center px-6">
+        {isCheckingAuth ? (
+          <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+        ) : (
+          <div className="grid w-full max-w-4xl gap-12 md:grid-cols-[1.1fr_1fr] md:gap-16">
+            <div className="flex flex-col justify-end gap-4 md:border-r md:border-border md:pr-16">
+              <span className="kicker">Admin Console</span>
+              <h1 className="font-serif text-5xl leading-[1.05] font-medium tracking-tight sm:text-6xl">
+                图像，
+                <br />
+                由此生成。
+              </h1>
+              <p className="max-w-sm text-[15px] leading-7 text-muted-foreground">
+                ChatGPT 网页能力的 OpenAI 兼容网关。管理号池、API Key 与创作记录。
+              </p>
+            </div>
+            <form
+              className="flex flex-col justify-end"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSubmit();
+              }}
+            >
+              <div className="border-b border-rule-strong pb-2 font-serif text-xl">管理员登录</div>
+              <label className="mt-6 flex flex-col gap-2">
+                <span className="text-xs text-muted-foreground">用户名</span>
+                <Input className="h-9" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} />
+              </label>
+              <label className="mt-4 flex flex-col gap-2">
+                <span className="text-xs text-muted-foreground">密码</span>
+                <Input className="h-9" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              </label>
+              <Button type="submit" className="mt-6 h-9" disabled={isSubmitting}>
+                {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
+                登录
+              </Button>
+            </form>
           </div>
-          <div className="flex flex-col gap-3">
-            <label className="relative">
-              <UserRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-11 pl-9" placeholder="用户名" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} />
-            </label>
-            <label className="relative">
-              <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-11 pl-9" type="password" placeholder="密码" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-            </label>
-            <Button type="submit" className="h-11" disabled={isSubmitting}>
-              {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
-              登录
-            </Button>
-          </div>
-        </form>
-      )}
+        )}
+      </div>
+      <footer className="border-t border-border px-6 py-4 text-xs text-muted-foreground sm:px-10">非官方项目 · 仅供学习研究</footer>
     </div>
   );
 }

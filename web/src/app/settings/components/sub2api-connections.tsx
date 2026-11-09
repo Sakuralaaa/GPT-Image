@@ -66,6 +66,7 @@ import {
   settingsDialogInputClassName,
   settingsListItemClassName,
 } from "./settings-ui";
+import { formatTime } from "@/lib/format";
 
 const PAGE_SIZE_OPTIONS = ["50", "100", "200"] as const;
 
@@ -494,7 +495,7 @@ export function Sub2APIConnections() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                         
                           onClick={() => void handleDelete(server)}
                           disabled={isBusy}
                           title="删除"
@@ -549,7 +550,7 @@ export function Sub2APIConnections() {
                                   </div>
                                   <div className="truncate text-xs text-muted-foreground">
                                     任务 {importJob.job_id.slice(0, 8)} ·{" "}
-                                    {importJob.created_at}
+                                    {formatTime(importJob.created_at)}
                                   </div>
                                 </div>
                                 <Badge
@@ -590,7 +591,7 @@ export function Sub2APIConnections() {
 
           <SettingsNotice>
             <p className="font-medium text-foreground">使用说明</p>
-            <ul className="mt-1 list-inside list-disc">
+            <ul className="mt-1 list-outside list-disc space-y-1 pl-5 marker:text-muted-foreground">
               <li>
                 输入 Sub2API 地址和管理员账户（或 Admin API
                 Key），保存为一个连接。
@@ -655,7 +656,7 @@ export function Sub2APIConnections() {
                 value={authMode}
                 onValueChange={(value) => setAuthMode(value as AuthMode)}
               >
-                <SelectTrigger className="h-11">
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -768,7 +769,7 @@ export function Sub2APIConnections() {
                     setFormGroupId(value === "__all__" ? "" : value)
                   }
                 >
-                  <SelectTrigger id="sub2api-group" className="h-11">
+                  <SelectTrigger id="sub2api-group" className="h-9">
                     <SelectValue placeholder="选择分组" />
                   </SelectTrigger>
                   <SelectContent>
@@ -890,7 +891,7 @@ export function Sub2APIConnections() {
                   setAccountPage(1);
                 }}
               >
-                <SelectTrigger className="h-11 w-[120px]">
+                <SelectTrigger className="h-9 w-[120px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

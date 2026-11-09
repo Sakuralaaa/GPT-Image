@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Check, CircleStop, Clock3, Download, Eye, Globe2, LoaderCircle, Lock, PencilLine, Plus, RotateCcw, Sparkles } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { Check, CircleStop, Clock3, Download, Eye, Globe2, LoaderCircle, Lock, PencilLine, Plus, RotateCcw } from "lucide-react";
 
 import { AuthenticatedImage } from "@/components/authenticated-image";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ type ImageResultsProps = {
   progressByTurnKey: Record<string, ImageTurnProgress>;
   progressNow: number;
   promptPresets: readonly ImagePromptPreset[];
+  /** Rendered between the studio header and the presets when no conversation is open. */
+  composerSlot?: ReactNode;
   onOpenLightbox: (images: ImageLightboxItem[], index: number) => void;
   onApplyPromptPreset: (preset: ImagePromptPreset) => void | Promise<void>;
   onContinueEdit: (conversationId: string, image: StoredImage | StoredReferenceImage) => void;
@@ -260,6 +262,7 @@ export function ImageResults({
   progressByTurnKey,
   progressNow,
   promptPresets,
+  composerSlot,
   onOpenLightbox,
   onApplyPromptPreset,
   onContinueEdit,
@@ -339,60 +342,54 @@ export function ImageResults({
 
   if (!selectedConversation) {
     return (
-      <div className="flex h-full min-h-[300px] items-center justify-center px-0 py-3 text-center sm:min-h-[420px] sm:py-6">
-        <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5">
-          <div className="mx-auto flex max-w-[640px] flex-col items-center">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#f0f0f0] px-3 py-1 text-xs font-medium text-[#45515e]">
-              <Sparkles className="size-4 text-[#1456f0]" />
-              生图预设
-            </div>
-            <h1 className="font-display text-3xl leading-[1.08] font-medium text-[#222222] sm:text-5xl">
-              Turn ideas into images
+      <div className="flex w-full flex-col gap-12 pb-12 text-left">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="kicker">Studio</span>
+            <h1 className="font-serif text-[2.25rem] leading-[1.1] font-medium tracking-tight text-foreground sm:text-[2.5rem]">
+              把想法，印成图像。
             </h1>
-            <p className="mx-auto mt-3 max-w-[460px] text-sm leading-6 text-[#45515e] sm:text-[15px]">
-              选择一组真实案例预设快速开始，也可以直接在下方输入自己的画面描述。
+            <p className="max-w-[560px] text-sm leading-6 text-muted-foreground">
+              写下画面描述开始创作，或从下方灵感预设套用一组真实案例。
             </p>
           </div>
-          <div className="hide-scrollbar flex gap-3 overflow-x-auto px-1 pb-1 text-left sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
+          {composerSlot}
+        </div>
+
+        <section className="flex flex-col">
+          <div className="flex items-end justify-between gap-4 border-b border-rule-strong pb-2">
+            <h2 className="font-serif text-xl leading-tight font-medium text-foreground">灵感预设</h2>
+            <span className="num text-xs text-muted-foreground">{promptPresets.length} 组 · 点选即套用</span>
+          </div>
+          <div className="hide-scrollbar flex gap-6 overflow-x-auto pt-5 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
             {promptPresets.map((preset) => (
               <button
                 key={preset.id}
                 type="button"
-                className="group w-[250px] shrink-0 overflow-hidden rounded-[22px] border border-[#f2f3f5] bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_16px_-4px_rgba(36,36,36,0.08)] sm:w-auto"
+                className="group flex w-[240px] shrink-0 flex-col text-left sm:w-auto"
                 onClick={() => void onApplyPromptPreset(preset)}
                 aria-label={`套用预设：${preset.title}`}
               >
-                <div className="relative aspect-[16/9] overflow-hidden bg-[#f0f0f0]">
-                  <img
-                    src={preset.imageSrc}
-                    alt={preset.title}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                  />
-                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-3 pt-8 pb-2">
-                    <span className="rounded-full bg-white/92 px-2 py-0.5 text-[11px] font-medium text-[#18181b] shadow-sm">
-                      {preset.size || "Auto"}
-                    </span>
-                    <span className="rounded-full bg-white/18 px-2 py-0.5 text-[11px] font-medium text-white shadow-sm backdrop-blur">
-                      {preset.count} 张
-                    </span>
-                  </div>
+                <div className="aspect-[3/2] overflow-hidden rounded-sm border border-border bg-secondary transition-colors group-hover:border-ink-4/70">
+                  <img src={preset.imageSrc} alt={preset.title} loading="lazy" className="h-full w-full object-cover" />
                 </div>
-                <div className="flex flex-col gap-2 px-4 py-3.5">
-                  <div className="font-display text-sm font-semibold text-[#222222]">{preset.title}</div>
-                  <div className="line-clamp-2 text-sm leading-6 text-[#45515e]">{preset.hint}</div>
-                  <div className="border-t border-[#f2f3f5] pt-2 text-xs font-medium text-[#1456f0]">套用这个预设</div>
+                <div className="mt-3 truncate font-serif text-[17px] leading-6 text-foreground underline-offset-4 decoration-1 group-hover:underline">
+                  {preset.title}
+                </div>
+                <div className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-muted-foreground">{preset.hint}</div>
+                <div className="num mt-1.5 text-[11px] leading-4 text-muted-foreground/80">
+                  {preset.size || "Auto"} · {preset.count} 张
                 </div>
               </button>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[980px] flex-col gap-5 sm:gap-8">
+    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 sm:gap-8">
       {selectedConversation.turns.map((turn, turnIndex) => {
         const progress = progressByTurnKey[turnProgressKey(selectedConversation.id, turn.id)];
         const referenceLightboxImages = turn.referenceImages.map((image, index) => ({
@@ -470,7 +467,7 @@ export function ImageResults({
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-full bg-[#1456f0] px-2.5 text-[11px] text-white shadow-sm hover:bg-[#2563eb]"
+                className="h-9 bg-primary text-primary-foreground px-2.5 text-[11px] hover:bg-primary/90"
                 disabled={selectedDownloadableImages.length === 0 || downloadingKey !== null}
                 onClick={() =>
                   void downloadItems(
@@ -490,7 +487,7 @@ export function ImageResults({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-full border-[#e5e7eb] bg-white px-2.5 text-[11px] text-[#45515e] shadow-sm hover:bg-black/[0.05]"
+                className="h-9 border-input px-2.5 text-[11px] text-muted-foreground hover:bg-accent"
                 disabled={downloadingKey !== null}
                 onClick={() =>
                   void downloadItems(
@@ -512,21 +509,21 @@ export function ImageResults({
         return (
           <div key={turn.id} className="flex flex-col gap-3 sm:gap-4">
             <div className="flex justify-end">
-              <article className="w-full max-w-[min(94%,760px)] rounded-[24px] border border-[#f2f3f5] bg-white px-4 py-3 text-left text-[14px] leading-6 text-[#222222] shadow-[0_4px_6px_rgba(0,0,0,0.08)] sm:px-5 sm:py-4 sm:text-[15px] sm:leading-7">
-                <div className="mb-3 flex items-start justify-between gap-3 border-b border-[#f2f3f5] pb-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] leading-5 text-[#45515e]">
-                    <span className="rounded-full bg-[#f0f0f0] px-2.5 py-0.5 text-[#45515e]">第 {turnIndex + 1} 轮</span>
-                    <span className="rounded-full bg-[#f0f0f0] px-2.5 py-0.5 text-[#45515e]">{getTurnModeLabel(turn)}</span>
-                    <span className="rounded-full bg-[#f0f0f0] px-2.5 py-0.5 text-[#45515e]">{turn.model}</span>
+              <article className="w-full max-w-[min(94%,760px)] rounded-sm border border-border bg-card px-4 py-3 text-left text-[14px] leading-6 text-foreground  sm:px-5 sm:py-4 sm:text-[15px] sm:leading-7">
+                <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] leading-5 text-muted-foreground">
+                    <span className="rounded-[6px] bg-secondary px-2 py-0.5 text-muted-foreground">第 {turnIndex + 1} 轮</span>
+                    <span className="rounded-[6px] bg-secondary px-2 py-0.5 text-muted-foreground">{getTurnModeLabel(turn)}</span>
+                    <span className="rounded-[6px] bg-secondary px-2 py-0.5 text-muted-foreground">{turn.model}</span>
                     {turn.mode !== "chat" && routeDetail ? (
-                      <span className="rounded-full bg-[#eef4ff] px-2.5 py-0.5 text-[#1456f0]">
+                      <span className="rounded-[6px] bg-secondary px-2 py-0.5 text-oxblood">
                         {routeDetail.routeLabel}
                       </span>
                     ) : null}
-                    <span className="rounded-full bg-[#f0f0f0] px-2.5 py-0.5 text-[#45515e]">
+                    <span className="rounded-[6px] bg-secondary px-2 py-0.5 text-muted-foreground">
                       {getTurnStatusLabel(turn.status)}
                     </span>
-                    <span className="px-1 text-[#8e8e93]">{formatConversationTime(turn.createdAt)}</span>
+                    <span className="px-1 text-muted-foreground">{formatConversationTime(turn.createdAt)}</span>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {turnBusy ? (
@@ -534,7 +531,7 @@ export function ImageResults({
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="size-8 rounded-full border-amber-200 bg-amber-50 text-amber-700 shadow-none hover:bg-amber-100"
+                        className="size-9 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                         onClick={() => void onCancelTurn(selectedConversation.id, turn.id)}
                         aria-label="终止生成任务"
                         title="终止"
@@ -547,7 +544,7 @@ export function ImageResults({
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="size-8 rounded-full border-[#e5e7eb] bg-white text-[#45515e] shadow-none hover:bg-black/[0.05]"
+                          className="size-9 border-input text-muted-foreground hover:bg-accent"
                           onClick={() => onEditTurn(selectedConversation.id, turn.id)}
                           aria-label="编辑生成设置"
                           title="编辑"
@@ -558,7 +555,7 @@ export function ImageResults({
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="size-8 rounded-full border-[#e5e7eb] bg-white text-[#45515e] shadow-none hover:bg-black/[0.05]"
+                          className="size-9 border-input text-muted-foreground hover:bg-accent"
                           disabled={turnBusy || !turn.prompt.trim()}
                           onClick={() => void onRegenerateTurn(selectedConversation.id, turn.id)}
                           aria-label="重新生成"
@@ -596,14 +593,14 @@ export function ImageResults({
             </div>
 
             <div className="flex justify-start">
-              <section className="w-full px-1">
+              <section className="w-full">
                 {showResultSummary ? (
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2 sm:mb-4">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#45515e] sm:gap-2 sm:text-xs">
-                      <span className="font-medium text-[#222222]">生成结果</span>
-                      <span className="rounded-full bg-[#f0f0f0] px-3 py-1">{resultCount} 张</span>
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground sm:gap-2 sm:text-xs">
+                      <span className="font-medium text-foreground">生成结果</span>
+                      <span className="rounded-[6px] bg-secondary px-2 py-0.5">{resultCount} 张</span>
                       {turn.count !== resultCount ? (
-                        <span className="rounded-full bg-[#f0f0f0] px-3 py-1">目标 {turn.count} 张</span>
+                        <span className="rounded-[6px] bg-secondary px-2 py-0.5">目标 {turn.count} 张</span>
                       ) : null}
                       {requestedSizeLabel ? (
                         <span
@@ -611,23 +608,23 @@ export function ImageResults({
                             "rounded-full px-3 py-1",
                             isHighResolutionImageSize(turn.size)
                               ? "bg-amber-50 text-amber-700"
-                              : "bg-[#f0f0f0]",
+                              : "bg-secondary",
                           )}
                         >
                           {requestedSizeLabel}
                         </span>
                       ) : null}
-                      {resultSizeLabel ? <span className="rounded-full bg-[#f0f0f0] px-3 py-1">{resultSizeLabel}</span> : null}
+                      {resultSizeLabel ? <span className="rounded-[6px] bg-secondary px-2 py-0.5">{resultSizeLabel}</span> : null}
                       {turn.quality ? (
-                        <span className="rounded-full bg-[#f0f0f0] px-3 py-1">Quality {turn.quality}</span>
+                        <span className="rounded-[6px] bg-secondary px-2 py-0.5">Quality {turn.quality}</span>
                       ) : null}
                       {turn.outputFormat ? (
-                        <span className="rounded-full bg-[#f0f0f0] px-3 py-1">{turn.outputFormat.toUpperCase()}</span>
+                        <span className="rounded-[6px] bg-secondary px-2 py-0.5">{turn.outputFormat.toUpperCase()}</span>
                       ) : null}
                       {turn.outputCompression != null && turn.outputFormat && supportsImageOutputCompression(turn.outputFormat) ? (
-                        <span className="rounded-full bg-[#f0f0f0] px-3 py-1">压缩 {turn.outputCompression}</span>
+                        <span className="rounded-[6px] bg-secondary px-2 py-0.5">压缩 {turn.outputCompression}</span>
                       ) : null}
-                      {outcomeLabel ? <span className="rounded-full bg-[#f0f0f0] px-3 py-1">{outcomeLabel}</span> : null}
+                      {outcomeLabel ? <span className="rounded-[6px] bg-secondary px-2 py-0.5">{outcomeLabel}</span> : null}
                       <span className={cn("rounded-full px-3 py-1", getStatusChipClass(turn.status))}>
                         {getTurnStatusLabel(turn.status)}
                       </span>
@@ -651,7 +648,7 @@ export function ImageResults({
                     {textReplyImages.map(({ image, index }) => (
                       <div
                         key={image.id}
-                        className="w-full max-w-[min(94%,760px)] rounded-[20px] border border-[#f2f3f5] bg-white px-4 py-3 text-left text-sm leading-6 text-[#45515e] shadow-[0_4px_6px_rgba(0,0,0,0.08)]"
+                        className="w-full max-w-[min(94%,760px)] rounded-sm border border-border bg-card px-4 py-3 text-left text-sm leading-6 text-muted-foreground "
                       >
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
@@ -663,7 +660,7 @@ export function ImageResults({
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-full border-[#e5e7eb] bg-white px-3 text-xs text-[#45515e] shadow-none hover:bg-black/[0.05] hover:text-[#18181b]"
+                            className="h-9 border-input px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
                             disabled={turnBusy || !turn.prompt.trim()}
                             onClick={() => void onRetryImage(selectedConversation.id, turn.id, index)}
                           >
@@ -699,8 +696,8 @@ export function ImageResults({
                         <figure
                           key={image.id}
                           className={cn(
-                            "group relative mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-[22px] bg-[#f0f0f0] shadow-[0_0_15px_rgba(44,30,116,0.16)] sm:mb-4",
-                            selected && "ring-2 ring-[#1456f0]/90 ring-offset-2",
+                            "group relative mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-sm bg-secondary sm:mb-4",
+                            selected && "ring-2 ring-oxblood/80 ring-offset-2",
                           )}
                           onMouseLeave={(event) => blurFocusedElementInContainer(event.currentTarget)}
                         >
@@ -742,7 +739,7 @@ export function ImageResults({
                             className={cn(
                               "absolute top-2 left-2 z-10 inline-flex size-6 items-center justify-center rounded-full border transition duration-150",
                               selected
-                                ? "border-[#1456f0] bg-[#1456f0] text-white opacity-100 shadow-sm"
+                                ? "border-primary bg-primary text-primary-foreground text-white opacity-100 shadow-sm"
                                 : "pointer-events-none border-white/90 bg-black/20 text-transparent opacity-0 shadow-sm group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 hover:bg-black/30",
                             )}
                             aria-label={selected ? "取消选择图片" : "选择图片"}
@@ -834,7 +831,7 @@ export function ImageResults({
                       return (
                         <div
                           key={image.id}
-                          className="mb-3 inline-block h-[160px] w-full break-inside-avoid overflow-hidden rounded-[18px] border border-amber-200 bg-amber-50 sm:mb-4"
+                          className="mb-3 inline-block h-[160px] w-full break-inside-avoid overflow-hidden rounded-sm border border-amber-200 bg-amber-50 sm:mb-4"
                         >
                           <div className="flex h-full min-h-16 items-center justify-center px-4 py-4 text-center text-sm leading-6 text-amber-700 sm:px-6 sm:py-8">
                             {image.error || "任务已终止"}
@@ -847,7 +844,7 @@ export function ImageResults({
                       return (
                         <div
                           key={image.id}
-                          className="mb-3 inline-flex h-[160px] w-full break-inside-avoid flex-col overflow-hidden rounded-[18px] border border-rose-200 bg-rose-50 sm:mb-4"
+                          className="mb-3 inline-flex h-[160px] w-full break-inside-avoid flex-col overflow-hidden rounded-sm border border-rose-200 bg-rose-50 sm:mb-4"
                         >
                           <div className="flex min-h-0 flex-1 items-center justify-center whitespace-pre-line px-4 py-3 text-center text-sm leading-6 text-rose-600 sm:px-5">
                             {image.error || "生成失败"}
@@ -857,7 +854,7 @@ export function ImageResults({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 rounded-full border-rose-200 bg-white px-3 text-xs text-rose-600 shadow-none hover:bg-rose-50 hover:text-rose-700"
+                              className="h-9 px-3 text-xs"
                               disabled={turnBusy || !turn.prompt.trim()}
                               onClick={() => void onRetryImage(selectedConversation.id, turn.id, index)}
                             >
@@ -879,7 +876,7 @@ export function ImageResults({
                     return (
                       <div
                         key={image.id}
-                        className="mb-3 inline-block h-[160px] w-full break-inside-avoid overflow-hidden rounded-[18px] border border-stone-200/80 bg-stone-100/80 sm:mb-4"
+                        className="mb-3 inline-block h-[160px] w-full break-inside-avoid overflow-hidden rounded-sm border border-stone-200/80 bg-stone-100/80 sm:mb-4"
                       >
                         <div className="flex h-full flex-col items-center justify-center gap-2 px-5 py-5 text-center text-stone-500">
                           <div className="rounded-full bg-white p-3 shadow-sm">

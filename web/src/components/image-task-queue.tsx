@@ -598,7 +598,7 @@ export function ImageTaskQueue({ className }: { className?: string }) {
             <Button
               type="button"
               size="sm"
-              className="mt-4 h-8 rounded-full bg-[#1456f0] px-3 text-xs text-white hover:bg-[#2563eb]"
+              className="mt-4 h-9 bg-[#1456f0] px-3 text-xs hover:bg-[#2563eb]"
               onClick={() => {
                 setOpen(false);
                 navigate("/image");

@@ -49,6 +49,7 @@ import { formatImageFileSize } from "@/lib/image-size";
 import { cn } from "@/lib/utils";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 import { canAccessPath, hasAPIPermission, type StoredAuthSession } from "@/store/auth";
+import { formatTime } from "@/lib/format";
 
 function getManagedImageFormatLabel(item: ManagedImage) {
   const normalized = (item.name || item.url).split("?")[0]?.match(/\.([a-z0-9]+)$/i)?.[1] || "image";
@@ -1080,7 +1081,7 @@ function ImageManagerContent({
         value={searchKeyword}
         onChange={(event) => updateSearchKeyword(event.target.value)}
         placeholder={placeholder}
-        className="h-10 rounded-lg pr-9 pl-9"
+        className="h-9 pr-9 pl-9"
       />
       {searchKeyword ? (
         <button
@@ -1099,7 +1100,7 @@ function ImageManagerContent({
   const renderFilterControls = () => (
     <>
       <Select value={visibilityFilter} onValueChange={(value) => updateVisibilityFilter(value as ImageVisibilityFilter)}>
-        <SelectTrigger className="h-10 min-w-0 rounded-lg">
+        <SelectTrigger className="h-9 min-w-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1111,7 +1112,7 @@ function ImageManagerContent({
         </SelectContent>
       </Select>
       <Select value={formatFilter} onValueChange={(value) => updateFormatFilter(value as ImageFormatFilter)}>
-        <SelectTrigger className="h-10 min-w-0 rounded-lg">
+        <SelectTrigger className="h-9 min-w-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1126,7 +1127,7 @@ function ImageManagerContent({
         </SelectContent>
       </Select>
       <Select value={orientationFilter} onValueChange={(value) => updateOrientationFilter(value as ImageOrientationFilter)}>
-        <SelectTrigger className="h-10 min-w-0 rounded-lg">
+        <SelectTrigger className="h-9 min-w-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1140,7 +1141,7 @@ function ImageManagerContent({
         </SelectContent>
       </Select>
       <Select value={resolutionFilter} onValueChange={(value) => updateResolutionFilter(value as ImageResolutionFilter)}>
-        <SelectTrigger className="h-10 min-w-0 rounded-lg">
+        <SelectTrigger className="h-9 min-w-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1154,7 +1155,7 @@ function ImageManagerContent({
         </SelectContent>
       </Select>
       <Select value={aspectRatioFilter} onValueChange={(value) => updateAspectRatioFilter(value as ImageAspectRatioFilter)}>
-        <SelectTrigger className="h-10 min-w-0 rounded-lg">
+        <SelectTrigger className="h-9 min-w-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1183,7 +1184,7 @@ function ImageManagerContent({
           <Button
             type="button"
             variant="outline"
-            className="h-10 min-w-0 flex-1 justify-start rounded-lg px-3 text-sm font-medium"
+            className="min-w-0 flex-1 justify-start px-3 text-sm font-medium"
             aria-label={autoRefreshButtonLabel}
           >
             <RefreshCw className={cn("size-4", isAutoRefreshing && "animate-spin")} />
@@ -1199,7 +1200,7 @@ function ImageManagerContent({
             <Button
               type="button"
               variant="ghost"
-              className="h-10 w-full justify-between rounded-md px-3 text-sm font-normal"
+              className="w-full justify-between px-3 text-sm font-normal"
               onClick={toggleAutoRefresh}
               role="menuitemcheckbox"
               aria-checked={isAutoRefreshEnabled}
@@ -1218,7 +1219,7 @@ function ImageManagerContent({
                   key={interval}
                   type="button"
                   variant="ghost"
-                  className="h-10 w-full justify-between rounded-md px-3 text-sm font-normal"
+                  className="w-full justify-between px-3 text-sm font-normal"
                   onClick={() => updateAutoRefreshInterval(interval)}
                   role="menuitemradio"
                   aria-checked={selected}
@@ -1239,7 +1240,7 @@ function ImageManagerContent({
         type="button"
         variant="outline"
         size="icon"
-        className="size-10 rounded-lg"
+        className="size-9"
         disabled={isLoading || isMutatingImages}
         onClick={() => void loadImages({ force: true })}
         aria-label="刷新图片库"
@@ -1251,13 +1252,13 @@ function ImageManagerContent({
   );
 
   return (
-    <section className="flex flex-col gap-5 pb-20 sm:pb-24">
-      <PageHeader eyebrow="Images" title="图片库" />
+    <section className="flex flex-col gap-8 pb-20 sm:pb-24">
+      <PageHeader eyebrow="Gallery" title="图库" dek="所有生成记录与存储占用；可按日期筛选、批量下载或清理。" />
 
       <div className="flex flex-col gap-4">
-        <section className="grid gap-4 rounded-[18px] border border-border bg-background/80 p-3 shadow-[0_6px_20px_rgba(15,23,42,0.04)] sm:p-4 lg:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] lg:items-start">
+        <section className="grid gap-6 border-t border-rule-strong pt-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="inline-flex w-full rounded-lg border border-border bg-muted/50 p-1">
+            <div className="inline-flex h-9 w-full gap-0.5 rounded-sm border border-input p-0.5">
               {[
                 { value: "mine" as const, label: "个人图库", icon: ImageIcon },
                 { value: "public" as const, label: "公开图库", icon: Globe2 },
@@ -1268,10 +1269,10 @@ function ImageManagerContent({
                   <button
                     key={option.value}
                     type="button"
-                    className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium transition ${
+                    className={`inline-flex h-full flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xs px-3 text-[13px] font-medium transition ${
                       active
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     }`}
                     onClick={() => handleGalleryViewChange(option.value)}
                     aria-pressed={active}
@@ -1311,7 +1312,7 @@ function ImageManagerContent({
                 <button
                   type="button"
                   className={cn(
-                    "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
+                    "relative inline-flex size-9 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
                     isMobileFiltersOpen && "border-[#bfdbfe] bg-[#eef4ff] text-[#1456f0] dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-300",
                   )}
                   onClick={() => setIsMobileFiltersOpen((open) => !open)}
@@ -1353,7 +1354,7 @@ function ImageManagerContent({
                   <Button
                     type="button"
                     variant="outline"
-                    className="col-span-2 h-9 rounded-full text-xs shadow-none"
+                    className="col-span-2 h-9 text-xs"
                     onClick={clearImageFilters}
                     disabled={!hasActiveFilters}
                   >
@@ -1383,7 +1384,7 @@ function ImageManagerContent({
             <PopoverTrigger asChild>
               <Button
                 type="button"
-                className="h-12 rounded-full px-4 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.65)]"
+                className="px-4"
                 aria-label="打开图片操作"
               >
                 <MoreHorizontal className="size-5" />
@@ -1408,7 +1409,7 @@ function ImageManagerContent({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-10 justify-start rounded-lg px-3 text-sm"
+                  className="justify-start px-3 text-sm"
                   disabled={filteredItems.length === 0 || isMutatingImages}
                   onClick={toggleAllImages}
                 >
@@ -1420,7 +1421,7 @@ function ImageManagerContent({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-10 justify-start rounded-lg px-3 text-sm"
+                      className="justify-start px-3 text-sm"
                       disabled={selectedPrivateItems.length === 0 || isMutatingImages}
                       onClick={() => void handleBulkVisibilityChange(selectedPrivateItems, "public")}
                     >
@@ -1434,7 +1435,7 @@ function ImageManagerContent({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-10 justify-start rounded-lg px-3 text-sm"
+                      className="justify-start px-3 text-sm"
                       disabled={selectedPublicItems.length === 0 || isMutatingImages}
                       onClick={() => void handleBulkVisibilityChange(selectedPublicItems, "private")}
                     >
@@ -1450,7 +1451,7 @@ function ImageManagerContent({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-10 justify-start rounded-lg px-3 text-sm"
+                  className="justify-start px-3 text-sm"
                   disabled={selectedCount === 0 || isMutatingImages}
                   onClick={() => void downloadItems("selected", selectedItems)}
                 >
@@ -1465,7 +1466,7 @@ function ImageManagerContent({
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-10 justify-start rounded-lg px-3 text-sm text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                    className="justify-start px-3 text-sm"
                     disabled={selectedCount === 0 || isMutatingImages}
                     onClick={() => {
                       setIsImageActionsOpen(false);
@@ -1479,7 +1480,7 @@ function ImageManagerContent({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-10 justify-start rounded-lg px-3 text-sm"
+                  className="justify-start px-3 text-sm"
                   disabled={filteredItems.length === 0 || isMutatingImages}
                   onClick={() => void downloadItems("all", filteredItems)}
                 >
@@ -1493,7 +1494,7 @@ function ImageManagerContent({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-10 justify-start rounded-lg px-3 text-sm"
+                  className="justify-start px-3 text-sm"
                   disabled={isLoading || isMutatingImages}
                   onClick={() => void loadImages({ force: true })}
                 >
@@ -1506,7 +1507,7 @@ function ImageManagerContent({
         </Popover>
 
         {showImageLoadingState ? (
-          <Card className="overflow-hidden rounded-[20px]">
+          <Card>
             <CardContent className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-6 py-14 text-center">
               <div className="rounded-[16px] bg-[#edf4ff] p-4 text-[#1456f0] ring-1 ring-blue-100">
                 <LoaderCircle className="size-7 animate-spin" />
@@ -1519,7 +1520,7 @@ function ImageManagerContent({
         ) : null}
 
         {showImageErrorState ? (
-          <Card className="overflow-hidden rounded-[20px]">
+          <Card>
             <CardContent className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-6 py-14 text-center">
               <div className="rounded-[16px] bg-rose-50 p-4 text-rose-600 ring-1 ring-rose-100">
                 <ImageIcon className="size-7" />
@@ -1528,7 +1529,7 @@ function ImageManagerContent({
                 <p className="text-sm font-medium text-foreground">图片库加载失败</p>
                 <p className="max-w-[32rem] text-sm leading-6 text-muted-foreground">{loadError}</p>
               </div>
-              <Button variant="outline" className="h-9 rounded-lg px-3" onClick={() => void loadImages({ force: true })}>
+              <Button variant="outline" className="h-9 px-3" onClick={() => void loadImages({ force: true })}>
                 <RefreshCw className="size-4" />
                 重试
               </Button>
@@ -1558,7 +1559,7 @@ function ImageManagerContent({
                 return (
                   <figure
                     key={item.url}
-                    className={`group relative w-full overflow-hidden rounded-[22px] bg-background shadow-[0_0_15px_rgba(44,30,116,0.16)] ${selected ? "ring-2 ring-[#1456f0]/80 ring-offset-2" : ""}`}
+                    className={`group relative w-full overflow-hidden rounded-sm bg-background ${selected ? "ring-2 ring-oxblood ring-offset-2 ring-offset-background" : ""}`}
                     style={{
                       contentVisibility: "auto",
                       containIntrinsicSize: item.width && item.height ? `${Math.min(360, item.width)}px ${Math.min(480, item.height)}px` : "320px 320px",
@@ -1732,7 +1733,7 @@ function ImageManagerContent({
                     >
                       <div className="text-left text-white drop-shadow-sm">
                         <div className="text-[10px] font-bold tracking-wide">{getManagedImageFormatLabel(item)}</div>
-                        <div className="mt-0.5 truncate text-[11px] text-white/90">{item.created_at}</div>
+                        <div className="mt-0.5 truncate text-[11px] text-white/90">{formatTime(item.created_at)}</div>
                         {imageMeta ? (
                           <div className="mt-0.5 truncate text-[11px] text-white/90">{imageMeta}</div>
                         ) : null}
@@ -1760,11 +1761,11 @@ function ImageManagerContent({
         ) : null}
 
         {showImageEmptyState || showImageFilteredEmptyState ? (
-          <Card className="overflow-hidden rounded-[20px]">
-            <CardContent className="flex min-h-[320px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
+          <Card>
+            <CardContent className="flex flex-col items-start gap-4 py-6 text-left">
 
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">{showImageFilteredEmptyState ? "没有匹配的图片" : "暂无图片"}</p>
+                <p className="font-serif text-lg text-foreground">{showImageFilteredEmptyState ? "没有匹配的图片" : "暂无图片"}</p>
                 <p className="max-w-[32rem] text-sm leading-6 text-muted-foreground">
                   {showImageFilteredEmptyState
                     ? "调整关键词、状态、格式或方向筛选后再试。"
@@ -1832,7 +1833,7 @@ function ImageManagerContent({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-xl border-stone-200 bg-white px-5 text-stone-700 hover:bg-stone-50"
+                className="px-5"
                 onClick={() => setPublishTarget(null)}
                 disabled={visibilityMutatingPath !== null}
               >
@@ -1840,7 +1841,7 @@ function ImageManagerContent({
               </Button>
               <Button
                 type="button"
-                className="h-10 rounded-xl px-5"
+                className="px-5"
                 onClick={() => void handleConfirmPublish()}
                 disabled={visibilityMutatingPath !== null}
               >
@@ -1864,7 +1865,7 @@ function ImageManagerContent({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-xl border-stone-200 bg-white px-5 text-stone-700 hover:bg-stone-50"
+                className="px-5"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
               >
@@ -1872,7 +1873,7 @@ function ImageManagerContent({
               </Button>
               <Button
                 type="button"
-                className="h-10 rounded-xl bg-rose-600 px-5 text-white hover:bg-rose-700"
+                className="px-5"
                 onClick={() => void handleConfirmDelete()}
                 disabled={isDeleting}
               >

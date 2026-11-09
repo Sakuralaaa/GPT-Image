@@ -2893,10 +2893,51 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
     }
   };
 
+  const renderComposer = (placement: "inline" | "docked") => (
+      <ImageComposer
+        composerMode={composerMode}
+        prompt={imagePrompt}
+        imageCount={imageCount}
+        imageModel={imageModel}
+        imageSizeMode={imageSizeMode}
+        imageAspectRatio={imageAspectRatio}
+        imageResolution={imageResolution}
+        imageCustomRatio={imageCustomRatio}
+        imageCustomWidth={imageCustomWidth}
+        imageCustomHeight={imageCustomHeight}
+        imageOutputFormat={imageOutputFormat}
+        imageOutputCompression={imageOutputCompression}
+        highResolutionHint={highResolutionHint}
+        billingSummary={billingSummary}
+        estimatedBillingUnits={estimatedBillingUnits}
+        billingBlocked={billingBlocked}
+        referenceImages={referenceImages}
+        textareaRef={textareaRef}
+        fileInputRef={fileInputRef}
+        onComposerModeChange={handleComposerModeChange}
+        onPromptChange={setImagePrompt}
+        onImageCountChange={setImageCount}
+        onImageModelChange={setImageModel}
+        onImageSizeModeChange={setImageSizeMode}
+        onImageAspectRatioChange={setImageAspectRatio}
+        onImageResolutionChange={setImageResolution}
+        onImageCustomRatioChange={setImageCustomRatio}
+        onImageCustomWidthChange={setImageCustomWidth}
+        onImageCustomHeightChange={setImageCustomHeight}
+        onImageOutputFormatChange={setImageOutputFormat}
+        onImageOutputCompressionChange={setImageOutputCompression}
+        onSubmit={handleSubmit}
+        onOpenPromptMarket={() => setIsPromptMarketOpen(true)}
+        onReferenceImageChange={handleReferenceImageChange}
+        onRemoveReferenceImage={handleRemoveReferenceImage}
+      placement={placement}
+      />
+  );
+
   return (
     <>
-      <section className="mx-auto grid h-[calc(100dvh-6.25rem)] min-h-0 w-full max-w-[1380px] grid-cols-1 gap-2 px-0 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:h-[calc(100dvh-5rem)] sm:gap-3 sm:px-3 sm:pb-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <div className="hidden h-full min-h-0 border-r border-[#f2f3f5] pr-3 lg:block">
+      <section className="mx-auto grid h-[calc(100dvh-10rem)] min-h-0 w-full grid-cols-1 gap-2 px-0 sm:gap-8 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-12">
+        <div className="hidden h-full min-h-0 pb-6 lg:block">
           <ImageSidebar
             conversations={conversations}
             isLoadingHistory={isLoadingHistory}
@@ -2981,7 +3022,7 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="rounded-full border-stone-200 bg-white"
+                       
                         onClick={() => editFileInputRef.current?.click()}
                       >
                         <ImagePlus className="size-4" />
@@ -3321,19 +3362,19 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
           </Dialog>
         ) : null}
 
-        <div className="relative flex min-h-0 flex-col gap-2 sm:gap-4">
-          <div className="flex items-center justify-between gap-2 px-1 sm:px-4">
-            <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
+        <div className="relative flex min-h-0 flex-col">
+          <div className="flex items-center justify-between gap-2 pb-3 lg:hidden">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <Button
                 variant="outline"
-                className="h-10 min-w-0 flex-1 shrink rounded-full border-[#e5e7eb] bg-white text-[#45515e] shadow-sm"
+                className="min-w-0 flex-1 shrink"
                 onClick={() => setIsHistoryOpen(true)}
               >
                 <History className="size-4" />
                 <span className="truncate">历史记录 ({conversations.length})</span>
               </Button>
               <Button
-                className="h-10 rounded-full shadow-sm"
+               
                 onClick={handleCreateDraft}
               >
                 <Plus className="size-4" />
@@ -3341,7 +3382,7 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
               </Button>
               <Button
                 variant="outline"
-                className="h-10 rounded-full border-[#e5e7eb] bg-white px-3 text-[#45515e] shadow-sm"
+                size="icon"
                 onClick={openClearHistoryConfirm}
                 disabled={conversations.length === 0}
               >
@@ -3352,14 +3393,14 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
 
           <div
             ref={resultsViewportRef}
-            className="hide-scrollbar min-h-0 flex-1 overflow-y-auto px-1 pt-2 pb-[14rem] sm:px-4 sm:pt-4 sm:pb-[15rem]"
-            style={composerDockHeight > 0 ? { paddingBottom: composerDockHeight + 24 } : undefined}
+            className={cn("hide-scrollbar min-h-0 flex-1 overflow-y-auto px-0", selectedConversation ? "pt-0 pb-8" : "pt-0 pb-0")}
           >
             <ImageResults
               selectedConversation={selectedConversation}
               progressByTurnKey={progressByTurnKey}
               progressNow={progressNow}
               promptPresets={IMAGE_PROMPT_PRESETS}
+              composerSlot={selectedConversation ? null : renderComposer("inline")}
               onOpenLightbox={openLightbox}
               onApplyPromptPreset={handleApplyPromptPreset}
               onContinueEdit={handleContinueEdit}
@@ -3373,55 +3414,21 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
             />
           </div>
 
+          {selectedConversation ? (
           <div
             ref={composerDockRef}
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-1 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:px-4 sm:pb-2"
+            className="relative z-30 shrink-0 border-t border-border pt-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]"
             style={
               {
                 "--image-composer-dock-height": `${composerDockHeight}px`,
               } as CSSProperties
             }
           >
-            <div className="pointer-events-auto mx-auto w-full max-w-[900px]">
-              <ImageComposer
-                composerMode={composerMode}
-                prompt={imagePrompt}
-                imageCount={imageCount}
-                imageModel={imageModel}
-                imageSizeMode={imageSizeMode}
-                imageAspectRatio={imageAspectRatio}
-                imageResolution={imageResolution}
-                imageCustomRatio={imageCustomRatio}
-                imageCustomWidth={imageCustomWidth}
-                imageCustomHeight={imageCustomHeight}
-                imageOutputFormat={imageOutputFormat}
-                imageOutputCompression={imageOutputCompression}
-                highResolutionHint={highResolutionHint}
-                billingSummary={billingSummary}
-                estimatedBillingUnits={estimatedBillingUnits}
-                billingBlocked={billingBlocked}
-                referenceImages={referenceImages}
-                textareaRef={textareaRef}
-                fileInputRef={fileInputRef}
-                onComposerModeChange={handleComposerModeChange}
-                onPromptChange={setImagePrompt}
-                onImageCountChange={setImageCount}
-                onImageModelChange={setImageModel}
-                onImageSizeModeChange={setImageSizeMode}
-                onImageAspectRatioChange={setImageAspectRatio}
-                onImageResolutionChange={setImageResolution}
-                onImageCustomRatioChange={setImageCustomRatio}
-                onImageCustomWidthChange={setImageCustomWidth}
-                onImageCustomHeightChange={setImageCustomHeight}
-                onImageOutputFormatChange={setImageOutputFormat}
-                onImageOutputCompressionChange={setImageOutputCompression}
-                onSubmit={handleSubmit}
-                onOpenPromptMarket={() => setIsPromptMarketOpen(true)}
-                onReferenceImageChange={handleReferenceImageChange}
-                onRemoveReferenceImage={handleRemoveReferenceImage}
-              />
+            <div className="w-full">
+              {renderComposer("docked")}
             </div>
           </div>
+          ) : null}
         </div>
       </section>
 
@@ -3509,7 +3516,7 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
               <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
                 取消
               </Button>
-              <Button className="bg-rose-600 text-white hover:bg-rose-700" onClick={() => void handleConfirmDelete()}>
+              <Button onClick={() => void handleConfirmDelete()}>
                 确认删除
               </Button>
             </DialogFooter>

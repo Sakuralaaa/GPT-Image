@@ -111,7 +111,7 @@ export function ProxySettingsCard() {
 
   return (
     <Card>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-6 pt-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-stone-100">
@@ -156,7 +156,7 @@ export function ProxySettingsCard() {
                 value={formUrl}
                 onChange={(event) => setFormUrl(event.target.value)}
                 placeholder="http://user:pass@host:port 或 socks5://host:port"
-                className="h-11 rounded-xl border-stone-200 bg-white font-mono text-xs"
+                className="h-9 border-stone-200 bg-white font-mono text-xs"
               />
               <div className="text-xs text-stone-400">
                 支持 <code className="font-mono">http / https / socks4 / socks5 / socks5h</code>。
@@ -172,7 +172,7 @@ export function ProxySettingsCard() {
                 value={formFlareSolverr}
                 onChange={(event) => setFormFlareSolverr(event.target.value)}
                 placeholder="http://127.0.0.1:8191"
-                className="h-11 rounded-xl border-stone-200 bg-white font-mono text-xs"
+                className="h-9 border-stone-200 bg-white font-mono text-xs"
               />
               <div className="text-xs text-stone-400">
                 用于刷新额度 / 请求 chatgpt.com 时按需绕过 Cloudflare 盾。留空则不启用；遇到 403 challenge 才会调用，拿到的出口 IP 应与上方代理一致。
@@ -199,7 +199,7 @@ export function ProxySettingsCard() {
 
             <div className="flex items-center gap-2">
               <Button
-                className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+                className="px-5"
                 onClick={() => void handleSave()}
                 disabled={isSaving || !dirty}
               >
@@ -208,7 +208,7 @@ export function ProxySettingsCard() {
               </Button>
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-stone-200 bg-white px-5 text-stone-700"
+                className="px-5"
                 onClick={() => void handleTest()}
                 disabled={isTesting}
               >

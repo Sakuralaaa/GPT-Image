@@ -1,31 +1,25 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * GPT Image — editorial design tokens.
+ * Paper + ink, one restrained accent (oxblood), hairline rules, small radii.
+ * Fonts are system stacks only: no runtime CDN.
+ */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
-  --font-login: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
-  --font-display: Outfit, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
-  --font-mid: Poppins, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
-  --font-data: Roboto, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --font-sans: "Inter", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", "Fraunces", "Iowan Old Style", "Palatino Linotype", Palatino, "Source Han Serif SC", "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, serif;
+  --font-display: var(--font-serif);
+  --font-login: var(--font-sans);
+  --font-mid: var(--font-sans);
+  --font-data: var(--font-sans);
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -42,95 +36,182 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink-4: var(--ink-4);
+  --color-oxblood: var(--oxblood);
+  --color-oxblood-soft: var(--oxblood-soft);
+  --color-chart-1: var(--oxblood);
+  --color-chart-2: var(--muted-foreground);
+  --color-chart-3: var(--foreground);
+  --color-chart-4: var(--rule);
+  --color-chart-5: var(--secondary);
+
+  /* Soft radii: controls/images 8px, surfaces (composer, dialogs, menus) 12px,
+     chips 6px, checkboxes 4px. Old 16–32px "app card" corners fold into 12px. */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+  --radius-chip: 6px;
+
+  /* Remap the warm-grey scale the pages use onto paper/ink tones. */
+  --color-stone-50: var(--paper-2);
+  --color-stone-100: var(--paper-3);
+  --color-stone-200: var(--rule);
+  --color-stone-300: var(--rule-strong);
+  --color-stone-400: var(--ink-4);
+  --color-stone-500: var(--ink-3);
+  --color-stone-600: var(--ink-3);
+  --color-stone-700: var(--ink-2);
+  --color-stone-800: var(--ink);
+  --color-stone-900: var(--ink);
+  --color-stone-950: var(--ink);
+
+  /* Blue / sky / violet "AI" accents collapse into the single oxblood accent. */
+  --color-blue-50: var(--oxblood-soft);
+  --color-blue-100: var(--oxblood-soft);
+  --color-blue-200: var(--oxblood-line);
+  --color-blue-500: var(--oxblood);
+  --color-blue-600: var(--oxblood);
+  --color-blue-700: var(--oxblood);
+  --color-sky-50: var(--oxblood-soft);
+  --color-sky-100: var(--oxblood-soft);
+  --color-sky-200: var(--oxblood-line);
+  --color-sky-300: var(--oxblood);
+  --color-sky-400: var(--oxblood);
+  --color-sky-500: var(--oxblood);
+  --color-sky-600: var(--oxblood);
+  --color-sky-700: var(--oxblood);
+  --color-sky-800: var(--oxblood-line);
+  --color-sky-900: var(--oxblood-line);
+  --color-sky-950: var(--oxblood-soft);
+  --color-violet-50: var(--oxblood-soft);
+  --color-violet-100: var(--oxblood-soft);
+  --color-violet-200: var(--oxblood-line);
+  --color-violet-300: var(--oxblood);
+  --color-violet-700: var(--oxblood);
+  --color-violet-800: var(--oxblood-line);
+  --color-violet-950: var(--oxblood-soft);
+  --color-pink-300: var(--oxblood);
+
+  /* Status colours, desaturated to sit on paper. */
+  --color-emerald-50: var(--ok-soft);
+  --color-emerald-100: var(--ok-soft);
+  --color-emerald-200: var(--ok-line);
+  --color-emerald-300: var(--ok);
+  --color-emerald-500: var(--ok);
+  --color-emerald-600: var(--ok);
+  --color-emerald-700: var(--ok);
+  --color-emerald-800: var(--ok);
+  --color-emerald-900: var(--ok-line);
+  --color-emerald-950: var(--ok-soft);
+  --color-amber-50: var(--warn-soft);
+  --color-amber-100: var(--warn-soft);
+  --color-amber-200: var(--warn-line);
+  --color-amber-300: var(--warn);
+  --color-amber-500: var(--warn);
+  --color-amber-600: var(--warn);
+  --color-amber-700: var(--warn);
+  --color-amber-800: var(--warn);
+  --color-amber-900: var(--warn-line);
+  --color-amber-950: var(--warn-soft);
+  --color-rose-50: var(--bad-soft);
+  --color-rose-100: var(--bad-soft);
+  --color-rose-200: var(--bad-line);
+  --color-rose-300: var(--bad);
+  --color-rose-400: var(--bad);
+  --color-rose-500: var(--bad);
+  --color-rose-600: var(--bad);
+  --color-rose-700: var(--bad);
+  --color-rose-800: var(--bad);
+  --color-rose-900: var(--bad-line);
+  --color-rose-950: var(--bad-soft);
+  --color-red-300: var(--bad-line);
+  --color-red-500: var(--bad);
 }
 
 :root {
   --theme-transition-x: 50vw;
   --theme-transition-y: 50vh;
   --theme-transition-radius: 0px;
-  --radius: 0.8125rem;
-  --background: #f6f8fc;
-  --foreground: #222222;
-  --card: #fbfdff;
-  --card-foreground: #222222;
-  --popover: #fbfdff;
-  --popover-foreground: #222222;
-  --primary: #181e25;
-  --primary-foreground: #ffffff;
-  --secondary: #edf2f8;
-  --secondary-foreground: #333333;
-  --muted: #f0f4f9;
-  --muted-foreground: #45515e;
-  --accent: #eaf1fa;
-  --accent-foreground: #18181b;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: #dfe7f1;
-  --input: #dce5ef;
-  --ring: #3b82f6;
-  --brand-6: #1456f0;
-  --brand-3: #17437d;
-  --brand-sky: #3daeff;
-  --brand-pink: #ea5ec1;
-  --surface-dark: #181e25;
-  --text-secondary: #45515e;
-  --text-tertiary: #8e8e93;
-  --border-soft: #e9eef6;
-  --surface-card-gradient: linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, #edf4ff 6%) 0%, color-mix(in srgb, var(--card) 96%, #fff0fb 4%) 100%);
-  --shadow-card: 0 8px 24px rgba(24, 40, 72, 0.07);
-  --shadow-ambient: 0 18px 54px rgba(44, 74, 116, 0.09);
-  --shadow-brand: 0 0 15px rgba(44, 30, 116, 0.16);
-  --shadow-elevated: 0 12px 16px -4px rgba(36, 36, 36, 0.08);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 8px;
+
+  --paper: #f5f1ea;
+  --paper-2: #f0ebe2;
+  --paper-3: #e9e3d8;
+  --ink: #1b1a17;
+  --ink-2: #3a3731;
+  --ink-3: #6b655c;
+  --ink-4: #9a9388;
+  --rule: #dcd5c8;
+  --rule-strong: #cfc6b7;
+  --oxblood: #7b2d26;
+  --oxblood-soft: #efe3dc;
+  --oxblood-line: #d9b9ae;
+  --ok: #3f6b4a;
+  --ok-soft: #e6eadc;
+  --ok-line: #bccab5;
+  --warn: #8a5a12;
+  --warn-soft: #f1e6d0;
+  --warn-line: #dcc69b;
+  --bad: #9b2c22;
+  --bad-soft: #f3e1da;
+  --bad-line: #deb3a8;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #faf7f2;
+  --card-foreground: var(--ink);
+  --popover: #fbf9f5;
+  --popover-foreground: var(--ink);
+  --primary: #2b2824;
+  --primary-foreground: #f8f5ef;
+  --secondary: var(--paper-3);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-2);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--paper-3);
+  --accent-foreground: var(--ink);
+  --destructive: var(--bad);
+  --border: var(--rule);
+  --input: #d6cec1;
+  --ring: var(--oxblood);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --paper: #1c1a17;
+  --paper-2: #221f1b;
+  --paper-3: #2a2621;
+  --ink: #ece6da;
+  --ink-2: #d3ccbf;
+  --ink-3: #a29a8d;
+  --ink-4: #7b746a;
+  --rule: #36322c;
+  --rule-strong: #47413a;
+  --oxblood: #d08072;
+  --oxblood-soft: #3a2724;
+  --oxblood-line: #6a3a33;
+  --ok: #9cc0a0;
+  --ok-soft: #26302a;
+  --ok-line: #3d5242;
+  --warn: #dcb26c;
+  --warn-soft: #352c1e;
+  --warn-line: #5e4a28;
+  --bad: #e2917f;
+  --bad-soft: #3a2420;
+  --bad-line: #6a3830;
+
+  --card: #211e1a;
+  --popover: #24211c;
+  --primary-foreground: #1c1a17;
+  --primary: #e2dbcd;
+  --input: #403b34;
 }
 
 @layer base {
@@ -143,8 +224,24 @@
   }
   body {
     @apply bg-background font-sans text-foreground antialiased;
-    background-image: linear-gradient(180deg, #f8fbff 0%, var(--background) 42%, #f2f6fb 100%);
-    line-height: 1.5;
+    line-height: 1.55;
+    font-feature-settings: "kern", "liga";
+  }
+  /* Paper grain: an SVG fractal-noise tile at ~5% opacity, tiled on the page (no gradients). */
+  body {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.055'/></svg>");
+    background-repeat: repeat;
+  }
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: var(--oxblood);
+    color: #f8f5ef;
   }
   body[data-scroll-locked] {
     margin-right: 0 !important;
@@ -177,204 +274,165 @@
 
 @layer components {
   .card-surface {
-    background: var(--surface-card-gradient);
+    background: var(--card);
+  }
+  /* Editorial primitives */
+  .kicker {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--oxblood);
+  }
+  .serif {
+    font-family: var(--font-serif);
+  }
+  .rule {
+    border-top: 1px solid var(--rule);
+  }
+  .rule-strong {
+    border-top: 1px solid var(--rule-strong);
+  }
+  .num {
+    font-variant-numeric: tabular-nums lining-nums;
   }
 }
 
 @layer utilities {
-  .brand-card-shadow {
-    box-shadow: var(--shadow-brand);
-  }
-
-  .soft-card-shadow {
-    box-shadow: var(--shadow-card);
-  }
-
-  .ambient-shadow {
-    box-shadow: var(--shadow-ambient);
-  }
-
+  .brand-card-shadow,
+  .soft-card-shadow,
+  .ambient-shadow,
   .elevated-shadow {
-    box-shadow: var(--shadow-elevated);
+    box-shadow: none;
   }
-
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+}
 
-  .dark .bg-white,
-  .dark .bg-stone-50,
-  .dark .bg-\[\#ffffff\] {
-    background-color: var(--card) !important;
-  }
+/*
+ * Normalisation layer (unlayered, so it beats utilities): pages written for the
+ * previous look carry hard-coded blues, big radii and soft drop shadows. These
+ * rules fold them into the editorial tokens so every page reads the same.
+ */
+[class*="shadow-"],
+[class*="shadow "] {
+  --tw-shadow: 0 0 #0000 !important;
+}
+[class*="backdrop-blur"] {
+  --tw-backdrop-blur: none !important;
+  backdrop-filter: none !important;
+}
+[class*="rounded-[1"],
+[class*="rounded-[2"],
+[class*="rounded-[3"] {
+  border-radius: 12px !important;
+}
+[class*="rounded-t-[2"],
+[class*="rounded-t-[3"] {
+  border-top-left-radius: 12px !important;
+  border-top-right-radius: 12px !important;
+}
+[class*="rounded-b-[2"],
+[class*="rounded-b-[3"] {
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+}
 
-  .dark .bg-white\/70,
-  .dark .bg-white\/80,
-  .dark .bg-white\/92,
-  .dark .bg-white\/95 {
-    background-color: oklch(0.205 0 0 / 88%) !important;
-  }
-
-  .dark .bg-white\/16,
-  .dark .bg-white\/18 {
-    background-color: oklch(0.205 0 0 / 68%) !important;
-  }
-
-  .dark .bg-\[\#f0f0f0\],
-  .dark .bg-\[\#f2f3f5\],
-  .dark .bg-\[\#e8e8e8\],
-  .dark .bg-stone-100,
-  .dark .bg-stone-100\/60,
-  .dark .bg-stone-100\/80,
-  .dark .bg-stone-200 {
-    background-color: var(--secondary) !important;
-  }
-
-  .dark .bg-\[\#edf4ff\],
-  .dark .bg-blue-50,
-  .dark .bg-sky-50 {
-    background-color: oklch(0.35 0.09 260 / 35%) !important;
-  }
-
-  .dark .bg-emerald-50 {
-    background-color: oklch(0.36 0.08 155 / 32%) !important;
-  }
-
-  .dark .bg-amber-50,
-  .dark .bg-amber-50\/90,
-  .dark .bg-amber-50\/95,
-  .dark .bg-amber-100 {
-    background-color: oklch(0.38 0.08 80 / 34%) !important;
-  }
-
-  .dark .bg-rose-50 {
-    background-color: oklch(0.36 0.08 25 / 34%) !important;
-  }
-
-  .dark .bg-violet-50 {
-    background-color: oklch(0.36 0.08 305 / 34%) !important;
-  }
-
-  .dark .border-\[\#f2f3f5\],
-  .dark .border-\[\#e5e7eb\],
-  .dark .border-stone-100,
-  .dark .border-stone-200,
-  .dark .border-stone-200\/80,
-  .dark .border-stone-300,
-  .dark .border-white\/80 {
-    border-color: var(--border) !important;
-  }
-
-  .dark .border-amber-100,
-  .dark .border-amber-200,
-  .dark .border-amber-200\/80 {
-    border-color: oklch(0.68 0.14 80 / 42%) !important;
-  }
-
-  .dark .border-rose-100,
-  .dark .border-rose-200 {
-    border-color: oklch(0.63 0.18 25 / 42%) !important;
-  }
-
-  .dark .border-emerald-200 {
-    border-color: oklch(0.67 0.14 155 / 42%) !important;
-  }
-
-  .dark .border-blue-200,
-  .dark .border-sky-200 {
-    border-color: oklch(0.68 0.13 250 / 42%) !important;
-  }
-
-  .dark .border-violet-200 {
-    border-color: oklch(0.67 0.14 305 / 42%) !important;
-  }
-
-  .dark .text-\[\#222222\],
-  .dark .text-\[\#18181b\],
-  .dark .text-stone-700,
-  .dark .text-stone-800,
-  .dark .text-stone-900,
-  .dark .text-stone-950 {
-    color: var(--foreground) !important;
-  }
-
-  .dark .text-\[\#45515e\],
-  .dark .text-\[\#8e8e93\],
-  .dark .text-stone-300,
-  .dark .text-stone-400,
-  .dark .text-stone-500,
-  .dark .text-stone-600 {
-    color: var(--muted-foreground) !important;
-  }
-
-  .dark .text-\[\#1456f0\],
-  .dark .text-blue-600 {
-    color: oklch(0.74 0.16 250) !important;
-  }
-
-  .dark .text-sky-300,
-  .dark .text-sky-600,
-  .dark .text-sky-700 {
-    color: oklch(0.78 0.13 230) !important;
-  }
-
-  .dark .text-emerald-700,
-  .dark .text-emerald-800,
-  .dark .text-emerald-900 {
-    color: oklch(0.79 0.13 155) !important;
-  }
-
-  .dark .text-amber-700,
-  .dark .text-amber-800,
-  .dark .text-amber-900 {
-    color: oklch(0.82 0.14 80) !important;
-  }
-
-  .dark .text-rose-500,
-  .dark .text-rose-600,
-  .dark .text-rose-700,
-  .dark .text-rose-800 {
-    color: oklch(0.76 0.16 25) !important;
-  }
-
-  .dark .text-violet-700 {
-    color: oklch(0.78 0.14 305) !important;
-  }
-
-  .dark .ring-amber-100 {
-    --tw-ring-color: oklch(0.68 0.14 80 / 35%) !important;
-  }
-
-  .dark .hover\:bg-black\/\[0\.05\]:hover,
-  .dark .hover\:bg-white:hover,
-  .dark .hover\:bg-stone-50:hover,
-  .dark .hover\:bg-stone-100:hover,
-  .dark .hover\:bg-\[\#e8e8e8\]:hover {
-    background-color: var(--accent) !important;
-  }
-
-  .dark .hover\:bg-blue-50:hover,
-  .dark .hover\:bg-sky-50:hover {
-    background-color: oklch(0.35 0.09 260 / 42%) !important;
-  }
-
-  .dark .hover\:bg-emerald-50:hover,
-  .dark .hover\:bg-emerald-100:hover {
-    background-color: oklch(0.36 0.08 155 / 42%) !important;
-  }
-
-  .dark .hover\:bg-amber-50:hover,
-  .dark .hover\:bg-amber-100:hover {
-    background-color: oklch(0.38 0.08 80 / 46%) !important;
-  }
-
-  .dark .hover\:bg-rose-50:hover,
-  .dark .hover\:bg-rose-100:hover {
-    background-color: oklch(0.36 0.08 25 / 46%) !important;
-  }
+.text-\[\#1456f0\],
+.text-\[\#2563eb\],
+.text-\[\#21b8a6\],
+.text-\[\#ea5ec1\] {
+  color: var(--oxblood) !important;
+}
+.text-\[\#45515e\],
+.text-\[\#8e8e93\],
+.text-\[\#686b73\],
+.text-\[\#73777f\] {
+  color: var(--muted-foreground) !important;
+}
+.text-\[\#222222\],
+.text-\[\#18181b\] {
+  color: var(--foreground) !important;
+}
+.bg-\[\#1456f0\],
+.bg-\[\#2563eb\],
+.bg-\[\#181e25\],
+.bg-\[\#2a323d\] {
+  background-color: var(--ink) !important;
+  color: var(--primary-foreground);
+}
+.bg-\[\#181e25\]\/82 {
+  background-color: color-mix(in srgb, var(--ink) 82%, transparent) !important;
+}
+.bg-\[\#edf4ff\],
+.bg-\[\#eef4ff\],
+.bg-\[\#eef4ff\]\/95,
+.bg-\[\#e8f2ff\],
+.bg-\[\#fff1f7\] {
+  background-color: var(--oxblood-soft) !important;
+}
+.bg-\[\#f0f0f0\],
+.bg-\[\#f2f3f5\],
+.bg-\[\#e8e8e8\],
+.bg-\[\#e1e2e4\],
+.bg-\[\#edf2f7\] {
+  background-color: var(--secondary) !important;
+}
+.bg-white,
+.bg-\[\#ffffff\],
+.bg-\[\#f8fbff\],
+.bg-\[\#fbfcfe\],
+.bg-\[\#f8fafc\],
+.bg-\[\#fffcff\]\/95 {
+  background-color: var(--card) !important;
+}
+.bg-white\/70,
+.bg-white\/80,
+.bg-white\/92,
+.bg-white\/95 {
+  background-color: color-mix(in srgb, var(--card) 92%, transparent) !important;
+}
+.bg-\[\#fff7ed\] {
+  background-color: var(--warn-soft) !important;
+}
+.border-\[\#1456f0\] {
+  border-color: var(--ink) !important;
+}
+.border-\[\#bfdbfe\],
+.border-\[\#dbe7ff\] {
+  border-color: var(--oxblood-line) !important;
+}
+.border-\[\#f2f3f5\],
+.border-\[\#e5e7eb\],
+.border-\[\#dedee3\],
+.border-white\/80 {
+  border-color: var(--border) !important;
+}
+.hover\:bg-\[\#e8e8e8\]:hover,
+.hover\:bg-black\/\[0\.05\]:hover {
+  background-color: var(--accent) !important;
+}
+/* Ink buttons keep paper-coloured text in both themes. */
+.text-white:is(.bg-stone-950, .bg-stone-900, .bg-stone-800, .bg-\[\#1456f0\], .bg-\[\#2563eb\], .bg-\[\#181e25\], .bg-primary) {
+  color: var(--primary-foreground) !important;
+}
+.hover\:bg-stone-800:hover {
+  background-color: color-mix(in srgb, var(--primary) 90%, var(--background)) !important;
+}
+/* No pill buttons: every Button primitive keeps the control radius. */
+[data-slot="button"].rounded-full,
+[data-slot="button"][class*="rounded-["] {
+  border-radius: 8px !important;
+}
+/* One weight step for emphasis: hierarchy comes from size and the serif. */
+.font-semibold,
+.font-bold,
+.font-extrabold {
+  font-weight: 500 !important;
 }

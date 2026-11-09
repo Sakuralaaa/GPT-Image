@@ -323,7 +323,7 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-xl border-stone-200 bg-white"
+               
                 onClick={() => txtInputRef.current?.click()}
                 disabled={isSubmitting}
               >
@@ -407,7 +407,7 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
             </div>
             <Button
               type="button"
-              className="mt-4 rounded-xl bg-stone-950 text-white hover:bg-stone-800"
+              className="mt-4"
               onClick={() => cpaInputRef.current?.click()}
               disabled={isSubmitting}
             >
@@ -502,7 +502,7 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <Button
-          className="h-10 rounded-xl bg-stone-950 px-4 text-white hover:bg-stone-800"
+          className="px-4"
           onClick={() => setOpen(true)}
           disabled={disabled}
         >
@@ -536,7 +536,7 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
           <DialogFooter className="pt-2">
             <Button
               variant="secondary"
-              className="h-10 rounded-xl bg-stone-100 px-5 text-stone-700 hover:bg-stone-200"
+              className="px-5"
               onClick={() => setOpen(false)}
               disabled={footerDisabled}
             >
@@ -544,7 +544,7 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
             </Button>
             {method === "token" ? (
               <Button
-                className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+                className="px-5"
                 onClick={() => void handleImportTokenText()}
                 disabled={footerDisabled}
               >
@@ -554,7 +554,7 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
             ) : null}
             {method === "session" ? (
               <Button
-                className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+                className="px-5"
                 onClick={() => void handleImportSessionJson()}
                 disabled={footerDisabled}
               >
@@ -594,14 +594,14 @@ export function AccountImportDialog({ disabled, canImportTokens, canImportSessio
           <DialogFooter className="pt-2">
             <Button
               variant="secondary"
-              className="h-10 rounded-xl bg-stone-100 px-5 text-stone-700 hover:bg-stone-200"
+              className="px-5"
               onClick={() => setConfirmOpen(false)}
               disabled={isSubmitting}
             >
               返回
             </Button>
             <Button
-              className="h-10 rounded-xl bg-stone-950 px-5 text-white hover:bg-stone-800"
+              className="px-5"
               onClick={() => void submitTokens(pendingCpaImport?.tokens ?? [], "CPA JSON 导入完成")}
               disabled={isSubmitting || !pendingCpaImport}
             >

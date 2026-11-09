@@ -4,11 +4,12 @@ import { toast } from "sonner";
 
 import { AdminGuard } from "@/components/admin-page";
 import { formatTime } from "@/lib/format";
-import { PageHeader } from "@/components/page-header";
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -135,6 +136,7 @@ function RecoveryContent() {
       <PageHeader
         eyebrow="Recovery"
         title="找回任务"
+        dek="刷新 Token、已存密码登录、邮箱验证码登录依次尝试；收不到验证码的条目进入“待填码”。"
         actions={
           <>
             <Button variant="outline" onClick={() => void run(async () => {
@@ -151,30 +153,29 @@ function RecoveryContent() {
           </>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="flex flex-col gap-2">
-          {loading && jobs.length === 0 ? <LoaderCircle className="mx-auto size-5 animate-spin text-muted-foreground" /> : null}
-          {!loading && jobs.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              暂无任务。可在账号页多选后“加入找回”，或在此粘贴邮箱新建。
-            </div>
-          ) : null}
+      {loading && jobs.length === 0 ? <LoaderCircle className="size-5 animate-spin text-muted-foreground" /> : null}
+      {!loading && jobs.length === 0 ? (
+        <EmptyState title="暂无找回任务">在账号页多选后“加入找回”，或点击右上角“新建任务”粘贴邮箱。开启自动自愈后，异常账号会自动入队。</EmptyState>
+      ) : null}
+      {jobs.length > 0 ? (
+      <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="flex flex-col border-t border-rule-strong">
           {jobs.map((job) => (
             <button
               key={job.id}
               type="button"
               onClick={() => setActiveId(job.id)}
               className={cn(
-                "rounded-xl border bg-card p-3 text-left shadow-sm transition-colors",
-                job.id === activeId ? "border-primary ring-1 ring-primary/30" : "border-border/70 hover:border-primary/40",
+                "border-b border-border py-3 text-left transition-colors",
+                job.id === activeId ? "" : "opacity-80 hover:opacity-100",
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-medium">{job.name}</span>
+                <span className={cn("truncate text-sm font-medium", job.id === activeId && "text-oxblood")}>{job.name}</span>
                 {job.status === "running" ? <LoaderCircle className="size-3.5 animate-spin text-primary" /> : null}
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">{job.created_at} · {job.source === "auto" ? "自动" : "手动"}</div>
-              <div className="mt-2 flex flex-wrap gap-1 text-xs">
+              <div className="mt-1 text-xs text-muted-foreground">{formatTime(job.created_at)} · {job.source === "auto" ? "自动" : "手动"}</div>
+              <div className="mt-1 flex flex-wrap gap-2 text-xs">
                 <span className="text-emerald-600">成功 {job.counts.succeeded || 0}</span>
                 <span className="text-amber-600">待填码 {job.counts.awaiting_code || 0}</span>
                 <span className="text-rose-600">失败 {job.counts.failed || 0}</span>
@@ -183,36 +184,37 @@ function RecoveryContent() {
             </button>
           ))}
         </aside>
-        <section className="min-w-0 rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+        <section className="min-w-0 border-t border-rule-strong pt-3">
           {!active ? (
-            <div className="py-16 text-center text-sm text-muted-foreground">选择左侧任务查看详情</div>
+            <EmptyState title="未选择任务">从左侧列表选择一个任务，查看每个邮箱的进度与验证码。</EmptyState>
           ) : (
             <>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="font-semibold">{active.name}</h2>
-                  <div className="text-xs text-muted-foreground">并发 {active.concurrency} · 更新于 {active.updated_at}</div>
+                  <h2 className="font-serif text-xl font-medium">{active.name}</h2>
+                  <div className="text-xs text-muted-foreground">并发 {active.concurrency} · 更新于 {formatTime(active.updated_at)}</div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <select
-                    className="h-9 rounded-lg border border-input bg-background px-2 text-sm"
-                    value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value)}
-                  >
-                    <option value="all">全部状态</option>
-                    {Object.entries(RECOVERY_STATUS_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label} {active.counts[value] || 0}</option>
-                    ))}
-                  </select>
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => void run(() => retryRecoveryJob(active.id), "已重新排队失败条目")}>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      {Object.entries(RECOVERY_STATUS_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label} {active.counts[value] || 0}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" disabled={busy} onClick={() => void run(() => retryRecoveryJob(active.id), "已重新排队失败条目")}>
                     <RotateCcw className="size-4" />
                     重试失败
                   </Button>
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => void run(() => cancelRecoveryJob(active.id), "已取消")}>
+                  <Button variant="outline" disabled={busy} onClick={() => void run(() => cancelRecoveryJob(active.id), "已取消")}>
                     <Square className="size-4" />
                     取消
                   </Button>
-                  <Button variant="outline" size="sm" className="text-rose-600" disabled={busy} onClick={() => {
+                  <Button variant="outline" size="icon" title="删除任务" disabled={busy} onClick={() => {
                     if (!window.confirm("删除该任务记录？")) return;
                     void run(async () => {
                       await deleteRecoveryJob(active.id);
@@ -224,9 +226,9 @@ function RecoveryContent() {
                 </div>
               </div>
               {awaiting.length > 0 ? (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                  <span>{awaiting.length} 个账号等待验证码：在下方逐个填写后批量提交（登录会话约 20 分钟内有效）。</span>
-                  <Button size="sm" disabled={busy} onClick={() => void submitCodes()}>
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border py-3 text-sm text-foreground">
+                  <span className="flex items-center gap-2"><span className="size-1.5 shrink-0 rounded-full bg-amber-600" />{awaiting.length} 个账号等待验证码：在下方逐个填写后批量提交（登录会话约 20 分钟内有效）。</span>
+                  <Button disabled={busy} onClick={() => void submitCodes()}>
                     <Send className="size-4" />
                     批量提交验证码
                   </Button>
@@ -240,8 +242,8 @@ function RecoveryContent() {
                       <TableHead>状态</TableHead>
                       <TableHead>收码渠道</TableHead>
                       <TableHead>阶段 / 原因</TableHead>
-                      <TableHead>次数</TableHead>
-                      <TableHead>更新时间</TableHead>
+                      <TableHead className="text-right">次数</TableHead>
+                      <TableHead className="pl-8">更新时间</TableHead>
                       <TableHead className="text-right">操作</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -259,13 +261,13 @@ function RecoveryContent() {
                           {item.error ? <div className="whitespace-pre-wrap break-words text-muted-foreground">{item.error}</div> : null}
                           {item.token_preview ? <div className="font-mono text-emerald-600">{item.token_preview}</div> : null}
                         </TableCell>
-                        <TableCell className="tabular-nums text-xs">{item.attempts}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{formatTime(item.updated_at)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-xs">{item.attempts}</TableCell>
+                        <TableCell className="whitespace-nowrap pl-8 text-xs text-muted-foreground">{formatTime(item.updated_at)}</TableCell>
                         <TableCell className="text-right">
                           {item.status === "awaiting_code" ? (
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-2">
                               <Input
-                                className="h-8 w-28 font-mono"
+                                className="w-28 font-mono"
                                 placeholder="验证码"
                                 value={codes[item.id] || ""}
                                 onChange={(event) => setCodes((prev) => ({ ...prev, [item.id]: event.target.value }))}
@@ -273,17 +275,17 @@ function RecoveryContent() {
                                   if (event.key === "Enter") void submitCodes(item);
                                 }}
                               />
-                              <Button size="icon" className="size-8" disabled={busy} onClick={() => void submitCodes(item)} title="提交">
+                              <Button size="icon" disabled={busy} onClick={() => void submitCodes(item)} title="提交">
                                 <Play className="size-4" />
                               </Button>
                             </div>
                           ) : item.status === "failed" || item.status === "cancelled" ? (
-                            <Button variant="ghost" size="sm" disabled={busy} onClick={() => void run(() => retryRecoveryJob(active.id, [item.id]), "已重新排队")}>
+                            <Button variant="ghost" size="sm" className="-mr-3" disabled={busy} onClick={() => void run(() => retryRecoveryJob(active.id, [item.id]), "已重新排队")}>
                               <RotateCcw className="size-4" />
                               重试
                             </Button>
                           ) : item.status === "queued" || item.status === "running" ? (
-                            <Button variant="ghost" size="sm" disabled={busy} onClick={() => void run(() => cancelRecoveryJob(active.id, [item.id]))}>
+                            <Button variant="ghost" size="sm" className="-mr-3" disabled={busy} onClick={() => void run(() => cancelRecoveryJob(active.id, [item.id]))}>
                               取消
                             </Button>
                           ) : null}
@@ -297,6 +299,7 @@ function RecoveryContent() {
           )}
         </section>
       </div>
+      ) : null}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-lg">

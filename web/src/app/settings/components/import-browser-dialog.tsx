@@ -118,7 +118,7 @@ export function ImportBrowserDialog() {
                 setPageSize(value as (typeof PAGE_SIZE_OPTIONS)[number])
               }
             >
-              <SelectTrigger className="h-11 w-[120px]">
+              <SelectTrigger className="h-9 w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

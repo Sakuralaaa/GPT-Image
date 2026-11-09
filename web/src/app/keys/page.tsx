@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy, LoaderCircle, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AdminGuard, StatCard } from "@/components/admin-page";
+import { AdminGuard, StatCard, StatRow } from "@/components/admin-page";
 import { formatTime, limitText } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -195,6 +195,7 @@ function KeysContent() {
       <PageHeader
         eyebrow="API Keys"
         title="API Key"
+        dek="独立于账号的调用凭证：每个 Key 可单独设置额度、RPM、并发、模型白名单与有效期。"
         actions={
           <Button onClick={openCreate}>
             <Plus className="size-4" />
@@ -202,23 +203,27 @@ function KeysContent() {
           </Button>
         }
       />
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Key 总数" value={summary?.keys ?? "—"} hint={`可用 ${summary?.enabled_keys ?? 0}`} />
-        <StatCard label="今日请求" value={summary?.today_requests ?? "—"} />
-        <StatCard label="今日出图" value={summary?.today_images ?? "—"} />
+      <StatRow>
+        <StatCard label="Key 总数" value={summary?.keys ?? "—"} unit="个" hint={`可用 ${summary?.enabled_keys ?? 0}`} />
+        <StatCard label="今日请求" value={summary?.today_requests ?? "—"} unit="次" />
+        <StatCard label="今日出图" value={summary?.today_images ?? "—"} unit="张" />
         <StatCard label="累计请求 / 出图" value={`${summary?.total_requests ?? 0} / ${summary?.total_images ?? 0}`} />
-      </section>
-      <section className="rounded-xl border border-border/70 bg-card shadow-sm">
-        <Table>
+      </StatRow>
+      <section className="flex flex-col gap-4 overflow-x-auto">
+        <div className="flex h-9 items-center gap-3">
+          <h2 className="font-serif text-xl font-medium">Key 列表</h2>
+          <span className="num text-sm text-muted-foreground">{items.length}</span>
+        </div>
+        <Table className="border-t border-rule-strong">
           <TableHeader>
             <TableRow>
               <TableHead>名称 / Key</TableHead>
               <TableHead>状态</TableHead>
-              <TableHead>今日</TableHead>
-              <TableHead>累计请求</TableHead>
-              <TableHead>图片</TableHead>
-              <TableHead>RPM / 并发</TableHead>
-              <TableHead>模型</TableHead>
+              <TableHead className="text-right">今日</TableHead>
+              <TableHead className="text-right">累计请求</TableHead>
+              <TableHead className="text-right">图片</TableHead>
+              <TableHead className="text-right">RPM / 并发</TableHead>
+              <TableHead className="pl-8">模型</TableHead>
               <TableHead>最近使用</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
@@ -233,7 +238,7 @@ function KeysContent() {
             ) : null}
             {!loading && items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={9} className="py-6 text-left text-sm text-muted-foreground">
                   还没有 API Key。新建后客户端用 <code>Authorization: Bearer &lt;key&gt;</code> 调用 /v1 接口。
                 </TableCell>
               </TableRow>
@@ -257,29 +262,29 @@ function KeysContent() {
                   </button>
                   {item.expires_at ? <div className="mt-1 text-xs text-muted-foreground">到期 {formatTime(item.expires_at)}</div> : null}
                 </TableCell>
-                <TableCell className="tabular-nums text-sm">
+                <TableCell className="text-right tabular-nums text-sm">
                   {limitText(item.today_requests, item.daily_limit)}
                   <div className="text-xs text-muted-foreground">出图 {item.today_images}</div>
                 </TableCell>
-                <TableCell className="tabular-nums text-sm">{limitText(item.used_requests, item.total_limit)}</TableCell>
-                <TableCell className="tabular-nums text-sm">{limitText(item.used_images, item.image_limit)}</TableCell>
-                <TableCell className="tabular-nums text-sm">
+                <TableCell className="text-right tabular-nums text-sm">{limitText(item.used_requests, item.total_limit)}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm">{limitText(item.used_images, item.image_limit)}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm">
                   {item.rpm_limit || "∞"} / {item.concurrency_limit || "∞"}
                   {item.running > 0 ? <div className="text-xs text-muted-foreground">进行中 {item.running}</div> : null}
                 </TableCell>
-                <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground" title={(item.models || []).join(", ")}>
+                <TableCell className="max-w-[160px] truncate pl-8 text-xs text-muted-foreground" title={(item.models || []).join(", ")}>
                   {(item.models || []).length ? item.models.join(", ") : "全部"}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{formatTime(item.last_used_at)}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(item)} title="编辑">
+                  <div className="-mr-2.5 flex justify-end">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="编辑">
                       <Pencil className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="size-8" onClick={() => void reset(item)} title="重置用量">
+                    <Button variant="ghost" size="icon" onClick={() => void reset(item)} title="重置用量">
                       <RotateCcw className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="size-8 text-rose-500" onClick={() => void remove(item)} title="删除">
+                    <Button variant="ghost" size="icon" onClick={() => void remove(item)} title="删除">
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
