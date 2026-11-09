@@ -152,6 +152,8 @@ func createRegisterMailProvider(mailConfig map[string]any, providerName, provide
 		return &registerInbucketMailProvider{registerHTTPMailProvider: base, entry: entry}, nil
 	case "yyds_mail":
 		return &registerYYDSMailProvider{registerHTTPMailProvider: base, entry: entry}, nil
+	case MailProviderOutlookEmail:
+		return &registerOutlookEmailProvider{registerHTTPMailProvider: base, entry: entry}, nil
 	default:
 		return nil, fmt.Errorf("unsupported mail.provider: %s", util.Clean(entry["type"]))
 	}

@@ -3,6 +3,10 @@
 
 ## [Unreleased]
 
+### 新增
+- 注册机新增 outlookEmail 邮箱渠道（`outlook_email`）：通过 outlookEmail 项目接口领取邮箱注册，结束后回报成功/失败/释放，已注册邮箱不再分配；可选填 Web 登录密码，成功后自动打「已注册GPT」标签。
+- 找回：经 outlookEmail 注册的账号按存储渠道路由到 outlookEmail，找回设置未配置时回退使用注册机的 outlook_email 配置。
+
 ## [1.0.2] - 2026-11-09
 
 ### 新增

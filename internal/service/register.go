@@ -83,7 +83,7 @@ type registerWorker struct {
 }
 
 type registerFingerprint struct {
-	secChUA               string
+	secChUA                string
 	secChUAFullVersionList string
 	secChUAPlatformVersion string
 	screen                 string
@@ -536,6 +536,7 @@ func (w *registerWorker) run(ctx context.Context) (map[string]any, error) {
 	flow := newRegisterFlow(w, ctx)
 	flow.email = email
 	result, err := flow.run(mailbox)
+	reportRegisterMailboxResult(w.mail, mailbox, ctx, err)
 	if err != nil {
 		return nil, err
 	}

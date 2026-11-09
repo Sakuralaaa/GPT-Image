@@ -96,6 +96,10 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 		route.Override = true
 	default:
 		switch {
+		case strings.HasPrefix(storedRef, MailProviderOutlookEmail+"#"):
+			// Registered through an outlookEmail pool: the mailbox may be any
+			// provider outlookEmail manages (Outlook, Gmail, IMAP...).
+			route.Channel = MailChannelOutlook
 		case findRecoveryCF(settings.CloudflareMails, domain) != nil, findCF() != nil:
 			route.Channel = MailChannelCloudflare
 		case isOutlookDomain(domain, settings.OutlookDomains):
@@ -136,7 +140,25 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 		route.Ready = true
 	case MailChannelOutlook:
 		if strings.TrimSpace(settings.OutlookBaseURL) == "" || strings.TrimSpace(settings.OutlookAPIKey) == "" {
-			route.Reason = "outlookEmail 渠道未配置（base_url / api_key）"
+			// Fall back to the register machine's outlook_email entry.
+			var picked map[string]any
+			for _, e := range entries {
+				if util.Clean(e["type"]) != MailProviderOutlookEmail {
+					continue
+				}
+				if picked == nil || (storedRef != "" && util.Clean(e["provider_ref"]) == storedRef) {
+					picked = e
+				}
+			}
+			if picked == nil {
+				route.Reason = "outlookEmail 渠道未配置（找回设置 base_url / api_key，或注册机 outlook_email 邮箱）"
+				return route
+			}
+			route.entry = picked
+			route.EntryRef = util.Clean(picked["provider_ref"])
+			route.EntryName = firstNonEmpty(util.Clean(picked["name"]), "outlookEmail")
+			route.Source = MailRouteSourceRegister
+			route.Ready = true
 			return route
 		}
 		route.EntryRef = "outlookEmail"
@@ -249,6 +271,13 @@ func (r *AccountRecovery) readChannelMessages(ctx context.Context, route MailRou
 		return []recoveryMailMessage{normalizeRecoveryMessage(message)}, nil
 	case MailChannelOutlook:
 		settings := r.Settings()
+		if route.entry != nil {
+			base, key, _, err := outlookEmailEntryConfig(route.entry)
+			if err != nil {
+				return nil, err
+			}
+			return fetchOutlookEmailMessages(ctx, r.outlookClient(), base, key, email)
+		}
 		return fetchOutlookEmailMessages(ctx, r.outlookClient(), settings.OutlookBaseURL, settings.OutlookAPIKey, email)
 	}
 	return nil, fmt.Errorf("未知邮箱渠道 %s", route.Channel)

@@ -449,7 +449,7 @@ func maskRegisterSecrets(register map[string]any) map[string]any {
 	return out
 }
 
-var registerSecretFields = []string{"admin_password", "api_key"}
+var registerSecretFields = []string{"admin_password", "api_key", "login_password"}
 
 // unmaskRegisterSecrets restores secrets the client echoed back masked.
 func unmaskRegisterSecrets(body, current map[string]any) {

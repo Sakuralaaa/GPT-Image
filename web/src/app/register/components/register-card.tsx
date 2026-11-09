@@ -55,6 +55,7 @@ export function RegisterCard() {
       ...(type === "moemail" ? { api_base: "", api_key: "", domain: [], expiry_time: 0 } : {}),
       ...(type === "inbucket" ? { api_base: "", domain: [], random_subdomain: true } : {}),
       ...(type === "yyds_mail" ? { api_base: "https://maliapi.215.im/v1", api_key: "", domain: [], subdomain: "", wildcard: false } : {}),
+      ...(type === "outlook_email" ? { api_base: "", api_key: "", project_key: "gpt-image", group_ids: "", login_password: "", tag_name: "已注册GPT" } : {}),
     });
   };
 
@@ -184,10 +185,11 @@ export function RegisterCard() {
                             <SelectItem value="moemail">moemail</SelectItem>
                             <SelectItem value="inbucket">inbucket</SelectItem>
                             <SelectItem value="yyds_mail">yyds_mail</SelectItem>
+                            <SelectItem value="outlook_email">outlookEmail（邮箱池）</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      {type === "cloudflare_temp_email" || type === "moemail" || type === "inbucket" || type === "yyds_mail" ? (
+                      {type === "cloudflare_temp_email" || type === "moemail" || type === "inbucket" || type === "yyds_mail" || type === "outlook_email" ? (
                         <div className="space-y-2">
                           <label className="text-sm text-stone-700">API Base</label>
                           <Input value={String(provider.api_base || "")} onChange={(event) => updateProvider(index, { api_base: event.target.value })} className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
@@ -207,9 +209,9 @@ export function RegisterCard() {
                           启用随机子域名
                         </label>
                       ) : null}
-                      {type === "tempmail_lol" || type === "duckmail" || type === "gptmail" || type === "moemail" || type === "yyds_mail" ? (
+                      {type === "tempmail_lol" || type === "duckmail" || type === "gptmail" || type === "moemail" || type === "yyds_mail" || type === "outlook_email" ? (
                         <div className="space-y-2">
-                          <label className="text-sm text-stone-700">API Key</label>
+                          <label className="text-sm text-stone-700">{type === "outlook_email" ? "API Key（需读写权限）" : "API Key"}</label>
                           <Input value={String(provider.api_key || "")} onChange={(event) => updateProvider(index, { api_key: event.target.value })} className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
                         </div>
                       ) : null}
@@ -224,6 +226,27 @@ export function RegisterCard() {
                           <label className="text-sm text-stone-700">Expiry Time</label>
                           <Input value={String(provider.expiry_time || "")} onChange={(event) => updateProvider(index, { expiry_time: Number(event.target.value) || 0 })} className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
                         </div>
+                      ) : null}
+                      {type === "outlook_email" ? (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-sm text-stone-700">项目标识</label>
+                            <Input value={String(provider.project_key || "")} onChange={(event) => updateProvider(index, { project_key: event.target.value })} placeholder="gpt-image" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm text-stone-700">分组 ID（可选，逗号分隔）</label>
+                            <Input value={String(provider.group_ids || "")} onChange={(event) => updateProvider(index, { group_ids: event.target.value })} placeholder="留空为全部邮箱" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm text-stone-700">Web 登录密码（可选，用于打标签）</label>
+                            <Input type="password" value={String(provider.login_password || "")} onChange={(event) => updateProvider(index, { login_password: event.target.value })} placeholder="留空则不打标签" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm text-stone-700">成功标签</label>
+                            <Input value={String(provider.tag_name || "")} onChange={(event) => updateProvider(index, { tag_name: event.target.value })} placeholder="已注册GPT" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                          </div>
+                          <p className="text-xs text-stone-500 md:col-span-2">从 outlookEmail 项目池领取邮箱注册，完成后回报成功或失败；已成功的邮箱不会再分配，填了登录密码会自动打上成功标签（标签不存在会自动创建）。失败邮箱需在 outlookEmail 里重置后才会重新领取。</p>
+                        </>
                       ) : null}
                       {type === "yyds_mail" ? (
                         <>
