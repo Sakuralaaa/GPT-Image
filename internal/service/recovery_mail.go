@@ -23,12 +23,14 @@ const (
 
 // MailRoute is the routed mail channel for an address.
 type MailRoute struct {
-	Channel  string         `json:"channel"`
-	EntryRef string         `json:"entry_ref"`
-	Override bool           `json:"override"`
-	Ready    bool           `json:"ready"`
-	Reason   string         `json:"reason"`
-	entry    map[string]any // provider config entry (cloudflare/gptmail)
+	Channel   string         `json:"channel"`
+	EntryRef  string         `json:"entry_ref"`
+	EntryName string         `json:"entry_name"`
+	Source    string         `json:"source"` // recovery | register (CF/gptmail entry origin)
+	Override  bool           `json:"override"`
+	Ready     bool           `json:"ready"`
+	Reason    string         `json:"reason"`
+	entry     map[string]any // provider config entry (cloudflare/gptmail)
 }
 
 func emailDomain(email string) string {
@@ -62,9 +64,12 @@ func entryCoversDomain(entry map[string]any, domain string) bool {
 }
 
 // RouteMailChannel picks the channel for an address:
-//  1. a cloudflare_temp_email entry whose domain list contains the domain;
-//  2. outlook/hotmail domains -> the outlookEmail channel;
-//  3. everything else -> gptmail.
+//  1. a recovery-owned Cloudflare entry (settings.CloudflareMails) whose
+//     suffixes match the domain;
+//  2. a register cloudflare_temp_email entry whose domain list contains the
+//     domain (legacy, reason "沿用注册机邮箱配置");
+//  3. outlook/hotmail domains -> the outlookEmail channel;
+//  4. everything else -> gptmail.
 //
 // override ("cloudflare_temp_email", "outlook", "gptmail") forces a channel.
 func RouteMailChannel(email string, mailConfig map[string]any, settings RecoverySettings, override, storedRef string) MailRoute {
@@ -91,7 +96,7 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 		route.Override = true
 	default:
 		switch {
-		case findCF() != nil:
+		case findRecoveryCF(settings.CloudflareMails, domain) != nil, findCF() != nil:
 			route.Channel = MailChannelCloudflare
 		case isOutlookDomain(domain, settings.OutlookDomains):
 			route.Channel = MailChannelOutlook
@@ -101,7 +106,17 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 	}
 	switch route.Channel {
 	case MailChannelCloudflare:
+		if e := findRecoveryCF(settings.CloudflareMails, domain); e != nil {
+			applyRecoveryCFRoute(&route, e)
+			return route
+		}
 		entry := findCF()
+		if entry == nil && storedRef != "" {
+			if e := findRecoveryCFByRef(settings.CloudflareMails, storedRef); e != nil {
+				applyRecoveryCFRoute(&route, e)
+				return route
+			}
+		}
 		if entry == nil && storedRef != "" {
 			for _, e := range entries {
 				if util.Clean(e["provider_ref"]) == storedRef && util.Clean(e["type"]) == MailChannelCloudflare {
@@ -110,11 +125,14 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 			}
 		}
 		if entry == nil {
-			route.Reason = "未配置覆盖域名 " + domain + " 的 cloudflare_temp_email"
+			route.Reason = "未配置覆盖域名 " + domain + " 的 Cloudflare 临时邮箱（找回设置或注册机邮箱配置）"
 			return route
 		}
 		route.entry = entry
 		route.EntryRef = util.Clean(entry["provider_ref"])
+		route.EntryName = firstNonEmpty(util.Clean(entry["name"]), util.Clean(entry["api_base"]), route.EntryRef)
+		route.Source = MailRouteSourceRegister
+		route.Reason = legacyCFRouteReason
 		route.Ready = true
 	case MailChannelOutlook:
 		if strings.TrimSpace(settings.OutlookBaseURL) == "" || strings.TrimSpace(settings.OutlookAPIKey) == "" {
@@ -122,6 +140,7 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 			return route
 		}
 		route.EntryRef = "outlookEmail"
+		route.EntryName = "outlookEmail"
 		route.Ready = true
 	case MailChannelGPTMail:
 		var picked map[string]any
@@ -143,6 +162,8 @@ func RouteMailChannel(email string, mailConfig map[string]any, settings Recovery
 		}
 		route.entry = picked
 		route.EntryRef = util.Clean(picked["provider_ref"])
+		route.EntryName = firstNonEmpty(util.Clean(picked["name"]), route.EntryRef)
+		route.Source = MailRouteSourceRegister
 		route.Ready = true
 	}
 	return route
@@ -176,6 +197,9 @@ func (r *AccountRecovery) readChannelMessages(ctx context.Context, route MailRou
 	}
 	switch route.Channel {
 	case MailChannelCloudflare:
+		if route.Source == MailRouteSourceRecovery {
+			return fetchRecoveryCFMessages(route.entry, email, util.Clean(creds["mail_token"]))
+		}
 		var errs []string
 		token := util.Clean(creds["mail_token"])
 		if token != "" {
@@ -310,7 +334,7 @@ func (r *AccountRecovery) ReadLatestMail(email string, creds map[string]any) (ma
 	if err != nil {
 		return nil, fmt.Errorf("[%s] %w", route.Channel, err)
 	}
-	out := map[string]any{"channel": route.Channel, "entry_ref": route.EntryRef, "empty": len(messages) == 0}
+	out := map[string]any{"channel": route.Channel, "entry_ref": route.EntryRef, "entry_name": route.EntryName, "empty": len(messages) == 0}
 	if len(messages) == 0 {
 		return out, nil
 	}

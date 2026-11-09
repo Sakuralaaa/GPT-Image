@@ -7,7 +7,9 @@ import {
   Image as ImageIcon,
   ImagePlus,
   MessageCircle,
+  Minus,
   Plus,
+  RectangleHorizontal,
   SlidersHorizontal,
   Store,
   X,
@@ -38,7 +40,6 @@ import {
   buildImageSize,
   formatImageSizeDisplay,
   getActiveImageAspectRatio,
-  getImageSizeRequirementLabel,
   isHighResolutionImageSize,
   parseImageRatio,
   type ImageAspectRatio,
@@ -148,8 +149,17 @@ function ImageComposerDock({ children }: { children: ReactNode }) {
   );
 }
 
-const imageSettingsFieldClass =
-  "flex min-h-8 min-w-0 items-center justify-between gap-2 rounded-sm border border-input bg-card px-3 py-1 text-[11px] dark:border-border dark:bg-background/70";
+const imageSettingsRowClass = "flex min-h-8 min-w-0 items-center justify-between gap-3";
+const imageSettingsLabelClass = "shrink-0 text-[13px] text-muted-foreground";
+
+// Toolbar 比例 menu: "" = Auto (no fixed ratio written / sent).
+const TOOLBAR_RATIO_OPTIONS: ReadonlyArray<{ value: ImageAspectRatio; label: string }> = [
+  { value: "", label: "Auto" },
+  ...IMAGE_ASPECT_RATIO_OPTIONS.filter((option) => option.value !== "" && option.value !== CUSTOM_IMAGE_ASPECT_RATIO).map((option) => ({
+    value: option.value,
+    label: option.value,
+  })),
+];
 
 type ImageSettingsMenuOption<Value extends string> = {
   value: Value;
@@ -242,44 +252,6 @@ function ImageSettingsPopoverMenu<Value extends string>({
   );
 }
 
-function ImageSizePreviewPanel({
-  label,
-  detail,
-  highResolution,
-  officialRoute,
-}: {
-  label: string;
-  detail: string;
-  highResolution: boolean;
-  officialRoute: boolean;
-}) {
-  return (
-    <div className="col-span-2 rounded-sm border border-input bg-muted px-3 py-1 dark:border-border dark:bg-background/50 sm:col-span-3">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <span className="shrink-0 text-[11px] font-medium text-[#45515e] dark:text-muted-foreground">
-          {officialRoute ? "构图偏好" : "计算后分辨率"}
-        </span>
-        <span
-          className={cn(
-            "min-w-0 truncate text-right font-mono text-sm font-semibold dark:text-foreground",
-            highResolution ? "text-amber-700 dark:text-amber-300" : "text-[#18181b]",
-          )}
-        >
-          {label}
-        </span>
-      </div>
-      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-[#8e8e93] dark:text-muted-foreground">
-        <span className="min-w-0 truncate">{detail}</span>
-        {highResolution ? (
-          <span className="shrink-0 rounded-[6px] bg-amber-50 px-2 py-0.5 font-medium text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800">
-            高分辨率
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export function ImageComposer({
   composerMode,
   prompt,
@@ -339,7 +311,6 @@ export function ImageComposer({
   );
   const modeModelOptions = composerMode === "chat" ? CHAT_MODEL_OPTIONS : IMAGE_CREATION_MODEL_OPTIONS;
   const imageModelLabel = modeModelOptions.find((option) => option.value === imageModel)?.label || imageModel;
-  const imageModelRoute = IMAGE_MODEL_ROUTE_DETAILS[imageModel as ImageModel];
   const imageAspectRatioLabel =
     imageAspectRatio === CUSTOM_IMAGE_ASPECT_RATIO
       ? imageCustomRatio.trim() || "自定义比例"
@@ -356,6 +327,14 @@ export function ImageComposer({
     : IMAGE_SIZE_MODE_OPTIONS.filter((option) => option.value !== "custom");
   const effectiveImageSizeMode = structuredImageParameters || imageSizeMode !== "custom" ? imageSizeMode : "auto";
   const effectiveImageResolution = structuredImageParameters ? imageResolution : "auto";
+  const imageCountValue = Math.min(10, Math.max(1, Math.trunc(Number(imageCount)) || 1));
+  const toolbarRatioValue: ImageAspectRatio = effectiveImageSizeMode === "ratio" ? imageAspectRatio : "";
+  const toolbarRatioLabel =
+    effectiveImageSizeMode === "custom"
+      ? "自定义"
+      : toolbarRatioValue === CUSTOM_IMAGE_ASPECT_RATIO
+        ? imageCustomRatio.trim() || "自定义"
+        : toolbarRatioValue || "Auto";
   const submitLabel = composerMode === "chat" ? "发送对话" : referenceImages.length > 0 ? "编辑图片" : "生成图片";
   const computedImageSize = useMemo(
     () =>
@@ -381,34 +360,6 @@ export function ImageComposer({
       ? "Auto"
       : "尺寸无效";
   const sizeIsHighResolution = Boolean(computedImageSize && isHighResolutionImageSize(computedImageSize));
-  const sizeRequirementLabel = computedImageSize ? getImageSizeRequirementLabel(computedImageSize) : "Auto";
-  const sizePreviewDetail =
-    effectiveImageSizeMode === "ratio"
-      ? isCustomRatioInvalid
-        ? "比例需要填写为宽:高"
-        : effectiveImageResolution === "auto"
-          ? activeImageAspectRatio
-            ? officialImageRoute
-              ? `将把 ${activeImageAspectRatio} 写入提示词作为构图偏好`
-              : `将按 ${activeImageAspectRatio} 比例下发`
-            : officialImageRoute
-              ? "不写入固定比例，交给官方链路决定"
-              : "Auto 比例将交给模型决定"
-          : computedImageSize
-            ? officialImageRoute
-              ? `将把 ${formatImageSizeDisplay(computedImageSize)} 作为提示词构图偏好，实际像素以结果为准`
-              : `将下发计算后的 ${formatImageSizeDisplay(computedImageSize)}，${sizeRequirementLabel}`
-            : "比例需要填写为宽:高"
-      : effectiveImageSizeMode === "custom"
-        ? computedImageSize
-          ? structuredImageParameters
-            ? `已按链路限制校准为 ${formatImageSizeDisplay(computedImageSize)}，${sizeRequirementLabel}`
-            : "官方链路不支持手动宽高"
-          : "宽高需要填写正整数"
-        : officialImageRoute
-          ? "不写入尺寸提示，实际像素由官方返回决定"
-          : "不会强制指定尺寸";
-
   useEffect(() => {
     if (composerMode === "chat") {
       setIsImageSettingsOpen(false);
@@ -817,6 +768,75 @@ export function ImageComposer({
                   ) : null}
                 </div>
                 {composerMode === "image" ? (
+                  <Popover
+                    open={isAspectRatioMenuOpen}
+                    onOpenChange={(open) => {
+                      setIsAspectRatioMenuOpen(open);
+                      if (open) {
+                        setIsModelMenuOpen(false);
+                        setIsImageSettingsOpen(false);
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "inline-flex size-9 shrink-0 items-center justify-center gap-2 rounded-sm text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 sm:h-9 sm:w-auto sm:px-3 sm:text-[13px] sm:font-medium",
+                          isAspectRatioMenuOpen && "bg-accent text-foreground",
+                        )}
+                        aria-label={`选择比例，当前 ${toolbarRatioLabel}`}
+                        aria-expanded={isAspectRatioMenuOpen}
+                        title={`比例：${toolbarRatioLabel}`}
+                      >
+                        <RectangleHorizontal className="size-4 shrink-0" />
+                        <span className="hidden shrink-0 sm:inline">比例</span>
+                        <span className="hidden text-foreground tabular-nums sm:inline">{toolbarRatioLabel}</span>
+                        <ChevronDown className={cn("hidden size-3.5 shrink-0 opacity-60 transition sm:block", isAspectRatioMenuOpen && "rotate-180")} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      side={inline ? "bottom" : "top"}
+                      sideOffset={8}
+                      collisionPadding={12}
+                      className="z-[80] w-[132px] rounded-sm border-input bg-card p-1 shadow-[0_18px_46px_-26px_rgba(15,23,42,0.35)] dark:border-border dark:shadow-[0_18px_46px_-24px_rgba(0,0,0,0.72)]"
+                      onOpenAutoFocus={(event) => event.preventDefault()}
+                    >
+                      <div className="grid gap-0.5" role="listbox" aria-label="比例">
+                        {TOOLBAR_RATIO_OPTIONS.map((option) => {
+                          const active = option.value === toolbarRatioValue;
+                          return (
+                            <button
+                              key={option.value || "auto"}
+                              type="button"
+                              role="option"
+                              aria-selected={active}
+                              className={cn(
+                                "flex h-8 w-full items-center justify-between gap-2 rounded-[6px] px-2.5 text-left text-[13px] tabular-nums text-muted-foreground transition hover:bg-accent hover:text-foreground",
+                                active && "bg-accent font-medium text-foreground",
+                              )}
+                              onClick={() => {
+                                if (option.value === "") {
+                                  onImageSizeModeChange("auto");
+                                  onImageAspectRatioChange("");
+                                } else {
+                                  onImageSizeModeChange("ratio");
+                                  onImageAspectRatioChange(option.value);
+                                }
+                                setIsAspectRatioMenuOpen(false);
+                              }}
+                            >
+                              <span>{option.label}</span>
+                              {active ? <Check className="size-3.5 shrink-0" /> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
+                {composerMode === "image" ? (
                   <Popover open={isImageSettingsOpen} onOpenChange={handleImageSettingsOpenChange}>
                     <PopoverTrigger asChild>
                       <button
@@ -837,263 +857,89 @@ export function ImageComposer({
                       align="start"
                       side={inline ? "bottom" : "top"}
                       sideOffset={8}
-                      className="z-[70] max-h-[min(calc(100dvh-2rem),34rem)] w-[min(calc(100vw-1rem),28rem)] overflow-y-auto overflow-x-hidden rounded-lg border-input bg-card p-2.5 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.35)] dark:border-border dark:bg-card dark:shadow-[0_24px_80px_-28px_rgba(0,0,0,0.72)] sm:w-[min(calc(100vw-2rem),28rem)]"
+                      className="z-[70] w-[min(calc(100vw-1rem),300px)] rounded-sm border-input bg-card p-3 shadow-[0_18px_46px_-26px_rgba(15,23,42,0.35)] dark:border-border dark:bg-card dark:shadow-[0_18px_46px_-24px_rgba(0,0,0,0.72)]"
                       onOpenAutoFocus={(event) => event.preventDefault()}
                     >
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {imageModelRoute ? (
-                          <div className="col-span-2 rounded-sm border border-[#dbe7ff] bg-[#f8fbff] px-3 py-1 text-[11px] leading-5 text-[#45515e] dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-muted-foreground sm:col-span-3">
-                            <div className="flex min-w-0 items-center justify-between gap-2">
-                              <span className="truncate font-semibold text-[#18181b] dark:text-foreground">
-                                {imageModelRoute.routeLabel}
-                              </span>
-                              {imageModelRoute.badge ? (
-                                <span className="shrink-0 rounded-[6px] bg-[#1456f0] px-2 py-0.5 text-[10px] font-semibold text-white">
-                                  {imageModelRoute.badge}
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="mt-0.5 line-clamp-2">{imageModelRoute.description}</p>
-                          </div>
-                        ) : null}
-                        <div className={imageSettingsFieldClass}>
-                          <span className="shrink-0 text-[11px] font-medium text-[#45515e] dark:text-muted-foreground">张数</span>
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            min="1"
-                            max="10"
-                            step="1"
-                            value={imageCount}
-                            onChange={(event) => onImageCountChange(event.target.value)}
-                            className="h-7 w-[36px] border-0 bg-transparent px-0 text-center text-xs font-semibold text-[#18181b] shadow-none focus-visible:ring-0 dark:text-foreground"
-                          />
-                        </div>
-                        <div className={imageSettingsFieldClass}>
-                          <span className="shrink-0 font-medium text-[#45515e] dark:text-muted-foreground">
-                            {officialImageRoute ? "构图" : "尺寸"}
-                          </span>
-                          <span className={cn(
-                            "min-w-0 truncate text-right text-xs font-semibold dark:text-foreground",
-                            structuredImageParameters && sizeIsHighResolution ? "text-amber-700 dark:text-amber-300" : "text-[#18181b]",
-                          )}>
-                            {sizePreviewLabel}
-                          </span>
-                        </div>
-                        <div className="col-span-2 grid grid-cols-3 gap-1 rounded-sm border border-input bg-card p-1 dark:border-border dark:bg-background/70 sm:col-span-3">
-                          {availableImageSizeModeOptions.map((option) => {
-                            const active = option.value === effectiveImageSizeMode;
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                className={cn(
-                                  "h-7 min-w-0 rounded-sm px-2 text-xs font-medium text-[#45515e] transition hover:bg-black/[0.05] dark:text-muted-foreground dark:hover:bg-accent/60",
-                                  active && "bg-[#181e25] text-white hover:bg-[#181e25] dark:bg-foreground dark:text-background",
-                                )}
-                                onClick={() => {
-                                  onImageSizeModeChange(option.value);
-                                  setIsAspectRatioMenuOpen(false);
-                                  setIsResolutionMenuOpen(false);
-                                }}
-                              >
-                                <span className="truncate">{option.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {effectiveImageSizeMode === "custom" ? (
-                          <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-sm border border-input bg-card px-3 py-1 dark:border-border dark:bg-background/70 sm:col-span-3">
-                            <label className="min-w-0">
-                              <span className="sr-only">手动输入宽度</span>
-                              <Input
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                step="1"
-                                value={imageCustomWidth}
-                                onChange={(event) => onImageCustomWidthChange(event.target.value)}
-                                className="h-9 min-w-0 border-0 bg-transparent px-0 text-center text-xs font-semibold text-[#18181b] shadow-none focus-visible:ring-0 dark:text-foreground"
-                              />
-                            </label>
-                            <X className="size-3.5 shrink-0 text-[#8e8e93]" />
-                            <label className="min-w-0">
-                              <span className="sr-only">手动输入高度</span>
-                              <Input
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
-                                step="1"
-                                value={imageCustomHeight}
-                                onChange={(event) => onImageCustomHeightChange(event.target.value)}
-                                className="h-9 min-w-0 border-0 bg-transparent px-0 text-center text-xs font-semibold text-[#18181b] shadow-none focus-visible:ring-0 dark:text-foreground"
-                              />
-                            </label>
-                          </div>
-                        ) : null}
-                        {effectiveImageSizeMode === "ratio" ? (
-                          <>
-                            <div className={imageSettingsFieldClass}>
-                              <span className="shrink-0 font-medium text-[#45515e] dark:text-muted-foreground">比例</span>
-                              <ImageSettingsPopoverMenu
-                                label="比例"
-                                value={imageAspectRatio}
-                                valueLabel={imageAspectRatioLabel}
-                                options={IMAGE_ASPECT_RATIO_OPTIONS}
-                                open={isAspectRatioMenuOpen}
-                                onOpenChange={(open) => {
-                                  setIsAspectRatioMenuOpen(open);
-                                  setIsModelMenuOpen(false);
-                                  if (open) {
-                                    setIsResolutionMenuOpen(false);
-                                  }
-                                }}
-                                onValueChange={onImageAspectRatioChange}
-                              />
-                            </div>
-                            {structuredImageParameters ? (
-                            <div className={imageSettingsFieldClass}>
-                              <span className="shrink-0 font-medium text-[#45515e] dark:text-muted-foreground">分辨率</span>
-                              <ImageSettingsPopoverMenu
-                                label="分辨率"
-                                value={imageResolution}
-                                valueLabel={imageResolutionLabel}
-                                options={IMAGE_RESOLUTION_OPTIONS}
-                                open={isResolutionMenuOpen}
-                                onOpenChange={(open) => {
-                                  setIsResolutionMenuOpen(open);
-                                  setIsModelMenuOpen(false);
-                                  if (open) {
-                                    setIsAspectRatioMenuOpen(false);
-                                  }
-                                }}
-                                onValueChange={onImageResolutionChange}
-                                align="start"
-                                contentClassName="w-[min(24rem,calc(100vw-2rem))]"
-                              />
-                            </div>
-                            ) : null}
-                            {imageAspectRatio === CUSTOM_IMAGE_ASPECT_RATIO ? (
-                              <div
-                                className={cn(
-                                  "col-span-2 flex min-w-0 items-center justify-between gap-2 rounded-sm border bg-card px-3 py-1 dark:bg-background/70 sm:col-span-3",
-                                  isCustomRatioInvalid
-                                    ? "border-red-300 dark:border-red-500/60"
-                                    : "border-input dark:border-border",
-                                )}
-                              >
-                                <span className="shrink-0 text-[11px] font-medium text-[#45515e] dark:text-muted-foreground">
-                                  自定义比例
-                                </span>
-                                <Input
-                                  value={imageCustomRatio}
-                                  onChange={(event) => onImageCustomRatioChange(event.target.value)}
-                                  placeholder="例如 5:4 / 2.39:1"
-                                  aria-invalid={isCustomRatioInvalid}
-                                  className="h-9 min-w-0 border-0 bg-transparent px-0 text-right text-xs font-semibold text-[#18181b] shadow-none focus-visible:ring-0 dark:text-foreground"
-                                />
-                              </div>
-                            ) : null}
-                            <ImageSizePreviewPanel
-                              label={sizePreviewLabel}
-                              detail={sizePreviewDetail}
-                              highResolution={sizeIsHighResolution}
-                              officialRoute={officialImageRoute}
+                      <div className="flex flex-col gap-2">
+                        <div className={imageSettingsRowClass}>
+                          <span className={imageSettingsLabelClass}>张数</span>
+                          <div className="inline-flex h-8 items-center rounded-sm border border-input">
+                            <button
+                              type="button"
+                              className="inline-flex size-8 items-center justify-center rounded-l-sm text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40"
+                              aria-label="减少张数"
+                              disabled={imageCountValue <= 1}
+                              onClick={() => onImageCountChange(String(Math.max(1, imageCountValue - 1)))}
+                            >
+                              <Minus className="size-3.5" />
+                            </button>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min="1"
+                              max="10"
+                              step="1"
+                              value={imageCount}
+                              onChange={(event) => onImageCountChange(event.target.value)}
+                              aria-label="张数"
+                              className="h-8 w-9 rounded-none border-0 border-x border-input bg-transparent px-0 text-center text-[13px] font-medium shadow-none [appearance:textfield] focus-visible:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
-                          </>
-                        ) : null}
-                        {effectiveImageSizeMode === "custom" ? (
-                          <ImageSizePreviewPanel
-                            label={sizePreviewLabel}
-                            detail={sizePreviewDetail}
-                            highResolution={sizeIsHighResolution}
-                            officialRoute={officialImageRoute}
-                          />
-                        ) : null}
-                        {structuredImageParameters && effectiveImageSizeMode !== "auto" && sizeIsHighResolution && highResolutionHint ? (
-                          <div className="col-span-2 rounded-sm border border-amber-100 bg-amber-50 px-3 py-1.5 text-[11px] leading-5 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200 sm:col-span-3">
-                            {highResolutionHint}
+                            <button
+                              type="button"
+                              className="inline-flex size-8 items-center justify-center rounded-r-sm text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40"
+                              aria-label="增加张数"
+                              disabled={imageCountValue >= 10}
+                              onClick={() => onImageCountChange(String(Math.min(10, imageCountValue + 1)))}
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
                           </div>
-                        ) : null}
-                        {officialImageRoute ? (
-                          <p className="col-span-2 rounded-sm border border-sky-100 bg-sky-50 px-3 py-1.5 text-[11px] leading-5 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100 sm:col-span-3">
-                            官方链路只会把比例写入提示词作为构图偏好，不会下发 1080P / 2K / 4K 或质量参数；格式由后端在保存结果时处理，压缩率仅适用于 JPEG。
-                          </p>
-                        ) : usesCodexImageRoute(imageModel) ? (
-                          <p className="col-span-2 rounded-sm border border-amber-100 bg-amber-50 px-3 py-1.5 text-[11px] leading-5 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200 sm:col-span-3">
-                            Codex 链路会把尺寸、格式和 JPEG 压缩率作为上游工具参数提交；后端只保存上游返回的图片，不做格式二次转换。Free 账号会被上游拒绝。
-                          </p>
-                        ) : null}
-                        {outputControlsSupported ? (
-                        <>
-                        <div className={imageSettingsFieldClass}>
-                          <span className="shrink-0 font-medium text-[#45515e] dark:text-muted-foreground">格式</span>
-                          <Select
-                            value={imageOutputFormat}
-                            onValueChange={(value) => {
-                              const nextFormat = value as ImageOutputFormat;
-                              onImageOutputFormatChange(nextFormat);
-                              if (!supportsImageOutputCompression(nextFormat)) {
-                                onImageOutputCompressionChange("");
-                              }
-                            }}
-                          >
-                            <SelectTrigger
-                              className="h-7 min-w-0 flex-1 justify-end gap-1 border-0 bg-transparent px-0 py-0 text-right text-xs font-semibold text-[#18181b] shadow-none focus-visible:ring-0 dark:text-foreground [&_svg]:size-4 [&_svg]:opacity-60 [&>span]:flex-none"
-                              aria-label="图片输出格式"
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent
-                              align="end"
-                              side="top"
-                              sideOffset={8}
-                              collisionPadding={12}
-                              className="z-[120] max-h-[min(var(--radix-select-content-available-height),14rem)] w-[min(12rem,calc(100vw-2rem))] overflow-x-hidden overscroll-contain rounded-lg border-input bg-card p-1.5 shadow-[0_18px_46px_-26px_rgba(15,23,42,0.35)] dark:border-border dark:bg-card dark:shadow-[0_18px_46px_-24px_rgba(0,0,0,0.72)]"
-                            >
-                              <SelectGroup>
-                                {IMAGE_OUTPUT_FORMAT_OPTIONS.map((option) => (
-                                  <SelectItem
-                                    key={option.value}
-                                    value={option.value}
-                                    className="rounded-lg px-3 py-2 pr-8 text-sm text-[#45515e] focus:bg-black/[0.05] focus:text-[#18181b] dark:text-muted-foreground dark:focus:bg-accent dark:focus:text-foreground"
-                                  >
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
                         </div>
-                        <label
-                          className={cn(
-                            imageSettingsFieldClass,
-                            compressionDisabled && "opacity-55",
-                          )}
-                          title={compressionDisabled ? "只有 JPEG 支持压缩率参数" : "JPEG 压缩率，0-100"}
-                        >
-                          <span className="shrink-0 font-medium text-[#45515e] dark:text-muted-foreground">压缩率</span>
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={imageOutputCompression}
-                            onChange={(event) => onImageOutputCompressionChange(event.target.value)}
-                            disabled={compressionDisabled}
-                            placeholder={compressionDisabled ? "N/A" : "0-100"}
-                            className="h-7 w-[4.25rem] border-0 bg-transparent px-0 text-right text-xs font-semibold text-[#18181b] shadow-none focus-visible:ring-0 disabled:cursor-not-allowed dark:text-foreground"
-                          />
-                        </label>
-                        <p className="col-span-2 px-1 text-[11px] leading-5 text-[#8e8e93] dark:text-muted-foreground sm:col-span-3">
-                          {compressionDisabled
-                            ? "PNG 和 WebP 不接收压缩率。结果卡会显示实际保存后的格式、尺寸和文件大小。"
-                            : officialImageRoute
-                              ? "JPEG 压缩率由后端保存结果时应用；实际上游返回格式不受此项控制。"
-                              : "JPEG 压缩率会作为 Codex 上游工具参数提交；后端不再二次转换格式。"}
-                        </p>
-                        </>
+                        {outputControlsSupported ? (
+                          <>
+                            <div className={imageSettingsRowClass}>
+                              <span className={imageSettingsLabelClass}>格式</span>
+                              <Select
+                                value={imageOutputFormat}
+                                onValueChange={(value) => {
+                                  const nextFormat = value as ImageOutputFormat;
+                                  onImageOutputFormatChange(nextFormat);
+                                  if (!supportsImageOutputCompression(nextFormat)) {
+                                    onImageOutputCompressionChange("");
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-8 w-[118px] text-[13px]" aria-label="图片输出格式">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent align="end" side="top" sideOffset={8} collisionPadding={12} className="z-[120] w-[160px]">
+                                  <SelectGroup>
+                                    {IMAGE_OUTPUT_FORMAT_OPTIONS.map((option) => (
+                                      <SelectItem key={option.value} value={option.value} className="text-[13px]">
+                                        {option.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {compressionSupported ? (
+                              <label className={imageSettingsRowClass}>
+                                <span className={imageSettingsLabelClass}>压缩率</span>
+                                <Input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={imageOutputCompression}
+                                  onChange={(event) => onImageOutputCompressionChange(event.target.value)}
+                                  placeholder="0-100"
+                                  className="h-8 w-[118px] text-right text-[13px]"
+                                />
+                              </label>
+                            ) : null}
+                          </>
                         ) : null}
                       </div>
                     </PopoverContent>

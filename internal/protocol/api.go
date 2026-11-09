@@ -118,6 +118,10 @@ func (e *Engine) HandleImageGenerations(ctx context.Context, body map[string]any
 	if hasOutputCompression && SupportsImageOutputCompression(outputFormat) {
 		request.OutputCompression = &outputCompression
 	}
+	if err := gifStreamError(body); err != nil {
+		return nil, nil, err
+	}
+	request.FrameCount, request.FrameDurationMS = service.GIFFrameOptionsFromBody(body)
 	applyImageToolOptionsToRequest(&request, ImageToolOptionsFromPayload(body))
 	request = request.Normalized()
 	outputs, errCh := e.StreamImageOutputsWithPool(ctx, request)
@@ -166,6 +170,10 @@ func (e *Engine) HandleImageEdits(ctx context.Context, body map[string]any, imag
 			request.OutputCompression = &compression
 		}
 	}
+	if err := gifStreamError(body); err != nil {
+		return nil, nil, err
+	}
+	request.FrameCount, request.FrameDurationMS = service.GIFFrameOptionsFromBody(body)
 	request = request.Normalized()
 	outputs, errCh := e.StreamImageOutputsWithPool(ctx, request)
 	if util.ToBool(body["stream"]) {
@@ -461,6 +469,9 @@ func (e *Engine) HandleChatCompletions(ctx context.Context, body map[string]any)
 		var items <-chan map[string]any
 		var errCh <-chan error
 		if IsImageChatRequest(body) {
+			if err := gifStreamError(body); err != nil {
+				return nil, nil, err
+			}
 			items, errCh = e.ImageChatEvents(ctx, body)
 		} else if HasVisionImages(body) {
 			model, messages, images, err := VisionChatParts(body)
@@ -921,6 +932,16 @@ func applyImageOutputOptionsToRequest(request *ConversationRequest, options Imag
 	}
 	request.OutputFormat = options.Format
 	request.OutputCompression = options.Compression
+	request.FrameCount = options.FrameCount
+	request.FrameDurationMS = options.FrameDurationMS
+}
+
+// gifStreamError rejects output_format=gif with stream=true.
+func gifStreamError(body map[string]any) error {
+	if err := service.ValidateGIFStreamRequest(body); err != nil {
+		return HTTPError{Status: 400, Message: err.Error()}
+	}
+	return nil
 }
 
 func applyImageToolOptionsToRequest(request *ConversationRequest, options ImageToolOptions) {

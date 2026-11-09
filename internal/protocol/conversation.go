@@ -76,6 +76,8 @@ type ConversationRequest struct {
 	Style                   string
 	OutputFormat            string
 	OutputCompression       *int
+	FrameCount              int // GIF only
+	FrameDurationMS         int // GIF only
 	PartialImages           *int
 	ResponseFormat          string
 	BaseURL                 string
@@ -94,6 +96,11 @@ func (r ConversationRequest) Normalized() ConversationRequest {
 	r.Size = NormalizeImageGenerationSize(r.Size)
 	r.Quality = ImageQualityForModel(r.Model, r.Quality)
 	r.OutputFormat = NormalizeImageOutputFormat(r.OutputFormat)
+	if r.OutputFormat == service.ImageOutputFormatGIF {
+		r.FrameCount, r.FrameDurationMS = service.NormalizeGIFFrameOptions(r.FrameCount, r.FrameDurationMS)
+	} else {
+		r.FrameCount, r.FrameDurationMS = 0, 0
+	}
 	if !SupportsImageOutputCompression(r.OutputFormat) {
 		r.OutputCompression = nil
 	} else if r.OutputCompression != nil {
@@ -127,6 +134,8 @@ type ImageOutputOptions struct {
 	Format              string
 	Compression         *int
 	TrustUpstreamFormat bool
+	FrameCount          int // GIF only
+	FrameDurationMS     int // GIF only
 }
 
 type ImageToolOptions struct {
@@ -140,6 +149,7 @@ type ImageToolOptions struct {
 func ImageOutputOptionsFromPayload(payload map[string]any) ImageOutputOptions {
 	format := NormalizeImageOutputFormat(util.Clean(payload["output_format"]))
 	options := ImageOutputOptions{Format: format}
+	options.FrameCount, options.FrameDurationMS = service.GIFFrameOptionsFromBody(payload)
 	if !SupportsImageOutputCompression(format) {
 		return options
 	}
@@ -848,6 +858,13 @@ func (e *Engine) StreamResponsesImageOutputs(ctx context.Context, client *backen
 		if strings.TrimSpace(prompt) == "" {
 			prompt = request.Prompt
 		}
+		upstreamFormat := request.OutputFormat
+		if upstreamFormat == service.ImageOutputFormatGIF {
+			// Upstream has no GIF parameter: ask for it in the prompt only
+			// (the stored user prompt is untouched) and request PNG.
+			prompt = service.AppendGIFPromptInstruction(prompt, request.FrameCount, request.FrameDurationMS)
+			upstreamFormat = "png"
+		}
 		events, upstreamErr := client.StreamResponsesImage(ctx, backend.ResponsesImageRequest{
 			Prompt:            prompt,
 			Model:             request.Model,
@@ -856,7 +873,7 @@ func (e *Engine) StreamResponsesImageOutputs(ctx context.Context, client *backen
 			Background:        request.Background,
 			Moderation:        request.Moderation,
 			Style:             request.Style,
-			OutputFormat:      request.OutputFormat,
+			OutputFormat:      upstreamFormat,
 			OutputCompression: request.OutputCompression,
 			PartialImages:     request.PartialImages,
 			InputImages:       responsesInputImages(request.Images),
@@ -1189,7 +1206,14 @@ func (e *Engine) formatImageResultWithOptions(items []map[string]any, prompt, re
 				}
 			}
 		}
-		if !itemOptions.TrustUpstreamFormat {
+		// GIF bytes are never re-encoded (that would drop frames). A GIF
+		// request that got a still image keeps the bytes and their real format.
+		actualFormat := ""
+		if service.IsGIFBytes(imageBytes) {
+			actualFormat = service.ImageOutputFormatGIF
+		} else if NormalizeImageOutputFormat(itemOptions.Format) == service.ImageOutputFormatGIF {
+			actualFormat = firstNonEmpty(service.SniffImageFormat(imageBytes), "png")
+		} else if !itemOptions.TrustUpstreamFormat {
 			imageBytes, err = encodeImageBytes(imageBytes, itemOptions)
 			if err != nil {
 				continue
@@ -1208,6 +1232,9 @@ func (e *Engine) formatImageResultWithOptions(items []map[string]any, prompt, re
 			}
 		}
 		outputFormat := NormalizeImageOutputFormat(itemOptions.Format)
+		if actualFormat != "" {
+			outputFormat = actualFormat
+		}
 		urlValue := e.SaveImageBytesForOwnerWithFormat(imageBytes, baseURL, ownerID, ownerName, outputFormat)
 		responseItem := map[string]any{"url": urlValue, "revised_prompt": revised, "output_format": outputFormat}
 		if responseFormat == "b64_json" {

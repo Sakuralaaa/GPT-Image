@@ -153,7 +153,7 @@ export function AccountDetailDrawer({ accountId, onClose, onChanged }: Props) {
               ))}
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">
-                  收码渠道（当前路由：{route ? `${MAIL_CHANNEL_LABELS[route.channel] || route.channel}${route.entry_ref ? ` · ${route.entry_ref}` : ""}${route.ready ? "" : ` · 不可用：${route.reason}`}` : "—"}）
+                  收码渠道（当前路由：{route ? `${MAIL_CHANNEL_LABELS[route.channel] || route.channel}${route.entry_name || route.entry_ref ? ` · ${route.entry_name || route.entry_ref}` : ""}${route.ready ? (route.reason ? ` · ${route.reason}` : "") : ` · 不可用：${route.reason}`}` : "—"}）
                 </span>
                 <select
                   className="h-9 rounded-lg border border-input bg-background px-2 text-sm"
@@ -187,7 +187,7 @@ export function AccountDetailDrawer({ accountId, onClose, onChanged }: Props) {
               </Button>
               {mail ? (
                 <div className="rounded-lg border border-border/70 p-3 text-xs">
-                  <div className="text-muted-foreground">渠道 {MAIL_CHANNEL_LABELS[mail.channel] || mail.channel} {mail.received_at ? `· ${formatTime(mail.received_at)}` : ""}</div>
+                  <div className="text-muted-foreground">渠道 {MAIL_CHANNEL_LABELS[mail.channel] || mail.channel}{mail.entry_name ? ` · ${mail.entry_name}` : ""} {mail.received_at ? `· ${formatTime(mail.received_at)}` : ""}</div>
                   {mail.empty ? (
                     <div className="mt-1">收件箱为空</div>
                   ) : (

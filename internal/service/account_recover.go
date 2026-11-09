@@ -43,6 +43,8 @@ type RecoverySettings struct {
 	OutlookBaseURL string   `json:"outlook_base_url"`
 	OutlookAPIKey  string   `json:"outlook_api_key"`
 	OutlookDomains []string `json:"outlook_domains"`
+	// Recovery-only cloudflare_temp_email deployments, routed by suffix.
+	CloudflareMails []RecoveryCFMail `json:"cloudflare_mails"`
 }
 
 func defaultRecoverySettings() RecoverySettings {
@@ -93,6 +95,7 @@ func (s RecoverySettings) normalized() RecoverySettings {
 	s.OutlookDomains = cleaned
 	s.OutlookBaseURL = strings.TrimSpace(s.OutlookBaseURL)
 	s.OutlookAPIKey = strings.TrimSpace(s.OutlookAPIKey)
+	s.CloudflareMails = normalizeRecoveryCFMails(s.CloudflareMails)
 	s.AutoDailyAttemptCap = clamp(s.AutoDailyAttemptCap, 1, 100, d.AutoDailyAttemptCap)
 	return s
 }
@@ -212,7 +215,7 @@ func (r *AccountRecovery) load() {
 		return
 	}
 	if doc.Settings != nil {
-		r.settings = doc.Settings.normalized()
+		r.settings = openRecoverySettings(*doc.Settings).normalized()
 	}
 	if doc.Heal != nil {
 		r.heal = doc.Heal
@@ -248,7 +251,7 @@ func (r *AccountRecovery) saveLocked() {
 	}
 	_ = r.store.SaveJSONDocument(recoveryJobsDocumentName, map[string]any{
 		"jobs":     r.jobs,
-		"settings": r.settings,
+		"settings": sealRecoverySettings(r.settings),
 		"heal":     r.heal,
 	})
 }
@@ -274,8 +277,10 @@ func (r *AccountRecovery) Settings() RecoverySettings {
 	return r.settings
 }
 
-// UpdateSettings merges the given fields into the settings.
-func (r *AccountRecovery) UpdateSettings(body map[string]any) RecoverySettings {
+// UpdateSettings merges the given fields into the settings. Invalid
+// settings (e.g. one suffix on two Cloudflare entries) are rejected and the
+// current settings are kept.
+func (r *AccountRecovery) UpdateSettings(body map[string]any) (RecoverySettings, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	current := map[string]any{}
@@ -284,11 +289,18 @@ func (r *AccountRecovery) UpdateSettings(body map[string]any) RecoverySettings {
 		current[k] = v
 	}
 	next := r.settings
-	_ = decodeInto(current, &next)
-	r.settings = next.normalized()
+	next.CloudflareMails = nil
+	if err := decodeInto(current, &next); err != nil {
+		return r.settings, err
+	}
+	next = next.normalized()
+	if err := validateRecoveryCFMails(next.CloudflareMails); err != nil {
+		return r.settings, err
+	}
+	r.settings = next
 	r.saveLocked()
 	r.signal()
-	return r.settings
+	return r.settings, nil
 }
 
 // CreateJob queues a job for the given emails (deduplicated).

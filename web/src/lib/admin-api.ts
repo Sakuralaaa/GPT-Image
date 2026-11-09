@@ -126,7 +126,21 @@ export type RecoverySettings = {
   outlook_base_url: string;
   outlook_api_key: string;
   outlook_domains: string[];
+  cloudflare_mails: RecoveryCFMail[];
 };
+
+export type RecoveryCFMail = {
+  id: string;
+  name: string;
+  base_url: string;
+  admin_password: string;
+  domains: string[];
+  enabled: boolean;
+};
+
+export function testRecoveryCFMail(input: { id: string; base_url: string; admin_password: string }) {
+  return httpRequest<{ ok: boolean; count?: number; error?: string }>("/api/recovery/cloudflare-mails/test", { method: "POST", body: input });
+}
 
 export function fetchRecoveryJobs() {
   return httpRequest<{ items: RecoveryJob[] }>("/api/recovery/jobs");
@@ -167,6 +181,8 @@ export function runAutoHealNow() {
 export type MailRoute = {
   channel: string;
   entry_ref: string;
+  entry_name?: string;
+  source?: string;
   override: boolean;
   ready: boolean;
   reason: string;
@@ -209,6 +225,7 @@ export function updateAccountCredentials(id: string, updates: AccountCredentialU
 export type LatestMail = {
   channel: string;
   entry_ref: string;
+  entry_name?: string;
   empty: boolean;
   subject?: string;
   code?: string;

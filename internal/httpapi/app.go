@@ -1179,6 +1179,8 @@ func readMultipartImageBody(r *http.Request) (map[string]any, []protocol.Uploade
 		"input_image_mask":         firstForm(r.MultipartForm, "input_image_mask"),
 		"output_format":            firstForm(r.MultipartForm, "output_format"),
 		"output_compression":       firstForm(r.MultipartForm, "output_compression"),
+		"frame_count":              firstForm(r.MultipartForm, "frame_count"),
+		"frame_duration_ms":        firstForm(r.MultipartForm, "frame_duration_ms"),
 		"share_prompt_parameters":  firstForm(r.MultipartForm, "share_prompt_parameters"),
 		"share_reference_images":   firstForm(r.MultipartForm, "share_reference_images"),
 		"frontend_conversation_id": firstForm(r.MultipartForm, "frontend_conversation_id"),

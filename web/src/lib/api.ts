@@ -158,16 +158,17 @@ export function supportsImageQuality(_model: string) {
 }
 
 export type ImageQuality = "low" | "medium" | "high";
-export type ImageOutputFormat = "png" | "jpeg" | "webp";
+export type ImageOutputFormat = "png" | "jpeg" | "webp" | "gif";
 export type ImageVisibility = "private" | "public";
 
 const IMAGE_QUALITY_VALUES = new Set<string>(["low", "medium", "high"]);
-const IMAGE_OUTPUT_FORMAT_VALUES = new Set<string>(["png", "jpeg", "webp"]);
+const IMAGE_OUTPUT_FORMAT_VALUES = new Set<string>(["png", "jpeg", "webp", "gif"]);
 
 export const IMAGE_OUTPUT_FORMAT_OPTIONS = [
   { value: "png", label: "PNG" },
   { value: "jpeg", label: "JPEG" },
   { value: "webp", label: "WebP" },
+  { value: "gif", label: "GIF（动画）" },
 ] as const satisfies ReadonlyArray<{ value: ImageOutputFormat; label: string }>;
 
 export function isImageQuality(value: unknown): value is ImageQuality {

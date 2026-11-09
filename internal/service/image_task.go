@@ -31,8 +31,10 @@ const (
 type ImageTaskHandler func(context.Context, Identity, map[string]any) (map[string]any, error)
 
 type ImageOutputOptions struct {
-	Format      string
-	Compression *int
+	Format          string
+	Compression     *int
+	FrameCount      int // GIF only
+	FrameDurationMS int // GIF only
 }
 
 type ImageToolOptions struct {
@@ -1120,6 +1122,12 @@ func mergeImageOutputOptions(payload map[string]any, options ImageOutputOptions)
 		return
 	}
 	payload["output_format"] = format
+	if format == ImageOutputFormatGIF {
+		payload["frame_count"], payload["frame_duration_ms"] = NormalizeGIFFrameOptions(options.FrameCount, options.FrameDurationMS)
+	} else {
+		delete(payload, "frame_count")
+		delete(payload, "frame_duration_ms")
+	}
 	if !SupportsImageOutputCompression(format) || options.Compression == nil {
 		delete(payload, "output_compression")
 		return
@@ -1168,6 +1176,8 @@ func NormalizeImageOutputFormat(format string) string {
 		return "jpeg"
 	case "webp":
 		return "webp"
+	case "gif":
+		return "gif"
 	default:
 		return "png"
 	}

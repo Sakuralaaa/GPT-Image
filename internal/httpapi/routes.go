@@ -551,6 +551,7 @@ func imageTaskRequestMetadata(body map[string]any) map[string]any {
 func imageOutputOptionsFromBody(body map[string]any) service.ImageOutputOptions {
 	format := service.NormalizeImageOutputFormat(util.Clean(body["output_format"]))
 	options := service.ImageOutputOptions{Format: format}
+	options.FrameCount, options.FrameDurationMS = service.GIFFrameOptionsFromBody(body)
 	if service.SupportsImageOutputCompression(format) {
 		if compression, ok := imageOutputCompressionFromBody(body["output_compression"]); ok {
 			options.Compression = &compression

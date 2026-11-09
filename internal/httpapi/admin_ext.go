@@ -147,10 +147,32 @@ func (a *App) handleRecovery(w http.ResponseWriter, r *http.Request) {
 			util.WriteError(w, http.StatusBadRequest, "invalid json body")
 			return
 		}
+		current := a.recovery.Settings()
 		if v, ok := body["outlook_api_key"]; ok {
-			body["outlook_api_key"] = service.UnmaskSecret(util.Clean(v), a.recovery.Settings().OutlookAPIKey)
+			body["outlook_api_key"] = service.UnmaskSecret(util.Clean(v), current.OutlookAPIKey)
 		}
-		util.WriteJSON(w, http.StatusOK, map[string]any{"settings": maskRecoverySettings(a.recovery.UpdateSettings(body))})
+		unmaskRecoveryCFMails(body, current)
+		settings, err := a.recovery.UpdateSettings(body)
+		if err != nil {
+			util.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		util.WriteJSON(w, http.StatusOK, map[string]any{"settings": maskRecoverySettings(settings)})
+	case parts[0] == "cloudflare-mails" && len(parts) == 2 && parts[1] == "test" && r.Method == http.MethodPost:
+		body, err := readJSONMap(r)
+		if err != nil {
+			util.WriteError(w, http.StatusBadRequest, "invalid json body")
+			return
+		}
+		result, err := a.recovery.ProbeRecoveryCFMail(util.Clean(body["id"]), &service.RecoveryCFMail{
+			BaseURL:       util.Clean(body["base_url"]),
+			AdminPassword: util.Clean(body["admin_password"]),
+		})
+		if err != nil {
+			util.WriteJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		util.WriteJSON(w, http.StatusOK, result)
 	case parts[0] == "auto-run" && len(parts) == 1 && r.Method == http.MethodPost:
 		util.WriteJSON(w, http.StatusOK, map[string]any{"queued": a.recovery.RunAutoHeal()})
 	case parts[0] == "jobs" && len(parts) == 1 && r.Method == http.MethodGet:
@@ -466,5 +488,38 @@ func unmaskRegisterSecrets(body, current map[string]any) {
 
 func maskRecoverySettings(settings service.RecoverySettings) service.RecoverySettings {
 	settings.OutlookAPIKey = service.MaskSecret(settings.OutlookAPIKey)
+	entries := make([]service.RecoveryCFMail, len(settings.CloudflareMails))
+	for i, e := range settings.CloudflareMails {
+		e.AdminPassword = service.MaskSecret(e.AdminPassword)
+		e.Domains = append([]string(nil), e.Domains...)
+		entries[i] = e
+	}
+	settings.CloudflareMails = entries
 	return settings
+}
+
+// unmaskRecoveryCFMails restores admin passwords the client echoed back
+// masked, matching entries by id.
+func unmaskRecoveryCFMails(body map[string]any, current service.RecoverySettings) {
+	raw, ok := body["cloudflare_mails"]
+	if !ok {
+		return
+	}
+	stored := map[string]string{}
+	for _, e := range current.CloudflareMails {
+		stored[e.ID] = e.AdminPassword
+	}
+	list := util.AsMapSlice(raw)
+	out := make([]any, 0, len(list))
+	for _, item := range list {
+		next := map[string]any{}
+		for k, v := range item {
+			next[k] = v
+		}
+		if pw, ok := stored[util.Clean(item["id"])]; ok {
+			next["admin_password"] = service.UnmaskSecret(util.Clean(item["admin_password"]), pw)
+		}
+		out = append(out, next)
+	}
+	body["cloudflare_mails"] = out
 }
