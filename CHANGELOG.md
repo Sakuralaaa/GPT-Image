@@ -3,6 +3,8 @@
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-09
+
 ### 新增
 - 找回专用 Cloudflare 临时邮箱：多条目、按后缀（支持 `*.domain`）路由，admin 密码加密存储，可在设置页测试连通。
 - GIF 输出：图片接口与 `/v1/responses` 支持 `output_format=gif`，可设帧数与帧间隔；创作台参数面板可选 GIF 并设置帧数、帧间隔。
