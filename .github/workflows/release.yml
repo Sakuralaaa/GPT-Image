@@ -88,26 +88,6 @@ jobs:
       - name: Configure git for Go modules
         run: git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        if: ${{ env.DOCKERHUB_USERNAME != '' }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Resolve release metadata
         id: meta
         run: |
@@ -139,8 +119,44 @@ jobs:
           GITHUB_REPO_NAME: ${{ github.event.repository.name }}
           DOCKERHUB_USERNAME: ${{ steps.meta.outputs.dockerhub_username }}
 
-  release-solver:
-    runs-on: ubuntu-latest
+      - name: Stage binaries for Docker
+        run: |
+          for arch in amd64 arm64; do
+            bin=$(find dist -type f -name chatgpt2api -path "*linux_${arch}*" | head -n1)
+            test -n "$bin"
+            mkdir -p docker-ctx/linux/${arch}
+            cp "$bin" docker-ctx/linux/${arch}/chatgpt2api
+          done
+          ls -lR docker-ctx
+
+      - name: Upload binaries for Docker
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-ctx
+          path: docker-ctx/
+          retention-days: 1
+
+  build-images:
+    needs: [release]
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [app, solver]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+          - image: app
+            context: docker-ctx
+            file: deploy/Dockerfile.release
+            suffix: ""
+          - image: solver
+            context: sentinel_solver
+            file: sentinel_solver/Dockerfile
+            suffix: "-sentinel-solver"
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -148,6 +164,19 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Download binaries
+        if: matrix.image == 'app'
+        uses: actions/download-artifact@v8
+        with:
+          name: docker-ctx
+          path: docker-ctx/
+
+      - name: Resolve image name
+        id: meta
+        run: |
+          OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${OWNER_LOWER}/gpt-image${{ matrix.suffix }}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -159,24 +188,90 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker meta
-        id: meta
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=image,name=${{ steps.meta.outputs.image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.image }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-images:
+    needs: [build-images]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: app
+            suffix: ""
+          - image: solver
+            suffix: "-sentinel-solver"
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        if: ${{ matrix.image == 'app' && env.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG_NAME="${{ github.event.inputs.tag }}"
           else
             TAG_NAME="${GITHUB_REF#refs/tags/}"
           fi
+          VERSION="${TAG_NAME#v}"
+          MAJOR_MINOR="$(echo "$VERSION" | cut -d. -f1,2)"
           OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
-          REPO_LOWER=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')
-          IMAGE="ghcr.io/${OWNER_LOWER}/${REPO_LOWER}-sentinel-solver"
-          echo "tags=${IMAGE}:${TAG_NAME#v},${IMAGE}:latest" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push solver Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: sentinel_solver
-          file: sentinel_solver/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          IMAGE="ghcr.io/${OWNER_LOWER}/gpt-image${{ matrix.suffix }}"
+          if [ "${{ matrix.image }}" = "app" ]; then
+            TAGS="-t ${IMAGE}:${VERSION} -t ${IMAGE}:${MAJOR_MINOR} -t ${IMAGE}:latest"
+            if [ -n "${DOCKERHUB_USERNAME}" ]; then
+              DH="${DOCKERHUB_USERNAME}/gpt-image"
+              TAGS="$TAGS -t ${DH}:${VERSION} -t ${DH}:${MAJOR_MINOR} -t ${DH}:latest"
+            fi
+          else
+            TAGS="-t ${IMAGE}:${VERSION} -t ${IMAGE}:latest"
+          fi
+          docker buildx imagetools create $TAGS $(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools inspect "${IMAGE}:${VERSION}"

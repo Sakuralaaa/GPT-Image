@@ -19,7 +19,7 @@ ARG GOST_VERSION=2.11.5
 ARG TARGETARCH
 RUN set -eux; \
     arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
-    case "$arch" in amd64|arm64) ;; arm) arch=armv7 ;; *) echo "unsupported arch $arch"; exit 1 ;; esac; \
+    case "$arch" in amd64) ;; arm64) arch=armv8 ;; arm) arch=armv7 ;; *) echo "unsupported arch $arch"; exit 1 ;; esac; \
     apt-get update; \
     apt-get install -y --no-install-recommends curl ca-certificates; \
     rm -rf /var/lib/apt/lists/*; \
