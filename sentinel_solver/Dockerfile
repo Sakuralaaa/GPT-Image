@@ -23,7 +23,13 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends curl ca-certificates; \
     rm -rf /var/lib/apt/lists/*; \
-    curl -fsSL -o /tmp/gost.gz "https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost-linux-${arch}-${GOST_VERSION}.gz"; \
+    name="gost-linux-${arch}-${GOST_VERSION}.gz"; \
+    curl -fsSL --retry 3 --retry-delay 5 -o /tmp/gost.gz "https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/${name}" \
+    || { \
+      asset="$(curl -fsSL --retry 3 "https://api.github.com/repos/ginuerzh/gost/releases/tags/v${GOST_VERSION}" \
+        | NAME="$name" node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const a=JSON.parse(d).assets.find(x=>x.name===process.env.NAME);if(!a)process.exit(1);process.stdout.write(a.url)})')"; \
+      curl -fsSL --retry 3 --retry-delay 5 -H "Accept: application/octet-stream" -o /tmp/gost.gz "$asset"; \
+    }; \
     gunzip -c /tmp/gost.gz > /usr/local/bin/gost; \
     chmod +x /usr/local/bin/gost; \
     rm -f /tmp/gost.gz; \
