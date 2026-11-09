@@ -52,7 +52,7 @@ function formatStamp(value?: string) {
 
 function EditorialValue({ value }: { value: string }) {
   // Numbers set in serif tabular figures; units and separators stay small.
-  const parts = value.split(/(\d[\d.,:\/\- ]*\d|\d)/);
+  const parts = value.split(/(\d[\d.,:/\- ]*\d|\d)/);
   return (
     <>
       {parts.map((part, index) =>

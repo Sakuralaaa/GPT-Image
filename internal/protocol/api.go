@@ -1220,6 +1220,9 @@ func ResponseImageGenerationRequest(body map[string]any, scope string, previous 
 		return ConversationRequest{}, "", HTTPError{Status: 400, Message: "unsupported image_generation model: " + toolModel}
 	}
 	outputFormat := NormalizeImageOutputFormat(firstNonEmpty(util.Clean(tool["output_format"]), util.Clean(body["output_format"])))
+	if outputFormat == service.ImageOutputFormatGIF && util.ToBool(body["stream"]) {
+		return ConversationRequest{}, "", HTTPError{Status: 400, Message: "output_format=gif 不支持 stream=true"}
+	}
 	partialImages, hasPartialImages := normalizedPositiveInt(firstNonNil(tool["partial_images"], body["partial_images"]))
 	request := ConversationRequest{
 		Prompt:         prompt,
@@ -1240,6 +1243,10 @@ func ResponseImageGenerationRequest(body map[string]any, scope string, previous 
 	}
 	if hasPartialImages {
 		request.PartialImages = &partialImages
+	}
+	if outputFormat == service.ImageOutputFormatGIF {
+		request.FrameCount = util.ToInt(firstNonNil(tool["frame_count"], body["frame_count"]), 0)
+		request.FrameDurationMS = util.ToInt(firstNonNil(tool["frame_duration_ms"], body["frame_duration_ms"]), 0)
 	}
 	if SupportsImageOutputCompression(outputFormat) {
 		if compression, ok := normalizedImageOutputCompression(firstNonNil(tool["output_compression"], body["output_compression"])); ok {

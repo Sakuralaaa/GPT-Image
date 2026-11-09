@@ -183,6 +183,39 @@ export function supportsImageOutputCompression(format: ImageOutputFormat) {
   return format === "jpeg";
 }
 
+export const GIF_FRAME_COUNT_MIN = 2;
+export const GIF_FRAME_COUNT_MAX = 24;
+export const GIF_FRAME_COUNT_DEFAULT = 8;
+export const GIF_FRAME_DURATION_MIN_MS = 20;
+export const GIF_FRAME_DURATION_MAX_MS = 2000;
+export const GIF_FRAME_DURATION_DEFAULT_MS = 120;
+
+export type GIFFrameOptions = {
+  frameCount: number;
+  frameDurationMs: number;
+};
+
+function clampInteger(value: unknown, min: number, max: number, fallback: number) {
+  const parsed = Math.trunc(Number(value));
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+// Mirrors service.NormalizeGIFFrameOptions on the backend.
+export function normalizeGIFFrameOptions(frameCount: unknown, frameDurationMs: unknown): GIFFrameOptions {
+  return {
+    frameCount: clampInteger(frameCount, GIF_FRAME_COUNT_MIN, GIF_FRAME_COUNT_MAX, GIF_FRAME_COUNT_DEFAULT),
+    frameDurationMs: clampInteger(
+      frameDurationMs,
+      GIF_FRAME_DURATION_MIN_MS,
+      GIF_FRAME_DURATION_MAX_MS,
+      GIF_FRAME_DURATION_DEFAULT_MS,
+    ),
+  };
+}
+
 export type AuthRole = "admin" | "user";
 export type AnnouncementTarget = "login" | "image";
 export type LogView = "all" | "meaningful" | "business";
@@ -382,6 +415,8 @@ export type ManagedImage = {
   requested_size?: string;
   output_format?: ImageOutputFormat;
   output_compression?: number;
+  frame_count?: number;
+  frame_duration_ms?: number;
   background?: string;
   moderation?: string;
   style?: string;
@@ -1026,6 +1061,7 @@ export async function createImageGenerationTask(
     moderation?: string;
     style?: string;
     partialImages?: number;
+    gifFrames?: GIFFrameOptions;
   },
   frontendConversationId?: string,
   fallbackReferenceImage?: FallbackReferenceImage,
@@ -1045,6 +1081,12 @@ export async function createImageGenerationTask(
       ...(toolOptions?.moderation ? { moderation: toolOptions.moderation } : {}),
       ...(toolOptions?.style ? { style: toolOptions.style } : {}),
       ...(typeof toolOptions?.partialImages === "number" ? { partial_images: toolOptions.partialImages } : {}),
+      ...(outputFormat === "gif" && toolOptions?.gifFrames
+        ? {
+            frame_count: toolOptions.gifFrames.frameCount,
+            frame_duration_ms: toolOptions.gifFrames.frameDurationMs,
+          }
+        : {}),
       ...(messages?.length ? { messages } : {}),
       ...(frontendConversationId ? { frontend_conversation_id: frontendConversationId } : {}),
       ...(fallbackReferenceImage ? { fallback_reference_image: fallbackReferenceImage } : {}),
@@ -1073,6 +1115,7 @@ export async function createImageEditTask(
     style?: string;
     partialImages?: number;
     inputImageMask?: string;
+    gifFrames?: GIFFrameOptions;
   },
   frontendConversationId?: string,
   fallbackReferenceImage?: FallbackReferenceImage,
@@ -1102,6 +1145,10 @@ export async function createImageEditTask(
   }
   if (typeof outputCompression === "number") {
     formData.append("output_compression", String(outputCompression));
+  }
+  if (outputFormat === "gif" && toolOptions?.gifFrames) {
+    formData.append("frame_count", String(toolOptions.gifFrames.frameCount));
+    formData.append("frame_duration_ms", String(toolOptions.gifFrames.frameDurationMs));
   }
   if (toolOptions?.background) {
     formData.append("background", toolOptions.background);

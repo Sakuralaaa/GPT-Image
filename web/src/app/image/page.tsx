@@ -71,6 +71,7 @@ import {
   isImageCreationModel,
   isImageModel,
   isImageOutputFormat,
+  normalizeGIFFrameOptions,
   supportsImageOutputCompression,
   supportsImageOutputControls,
   supportsStructuredImageParameters,
@@ -129,6 +130,8 @@ const IMAGE_CUSTOM_WIDTH_STORAGE_KEY = "chatgpt2api:image_last_custom_width";
 const IMAGE_CUSTOM_HEIGHT_STORAGE_KEY = "chatgpt2api:image_last_custom_height";
 const IMAGE_OUTPUT_FORMAT_STORAGE_KEY = "chatgpt2api:image_last_output_format";
 const IMAGE_OUTPUT_COMPRESSION_STORAGE_KEY = "chatgpt2api:image_last_output_compression";
+const IMAGE_GIF_FRAME_COUNT_STORAGE_KEY = "chatgpt2api:image_last_gif_frame_count";
+const IMAGE_GIF_FRAME_DURATION_STORAGE_KEY = "chatgpt2api:image_last_gif_frame_duration_ms";
 const QUOTA_REFRESH_EVENT = "chatgpt2api:quota-refresh";
 const DEFAULT_IMAGE_OUTPUT_FORMAT: ImageOutputFormat = "png";
 const activeConversationQueueIds = new Set<string>();
@@ -681,6 +684,23 @@ function getStoredImageOutputFormat(): ImageOutputFormat {
   return isImageOutputFormat(storedFormat) ? storedFormat : DEFAULT_IMAGE_OUTPUT_FORMAT;
 }
 
+function getStoredGIFFrameOptions() {
+  if (typeof window === "undefined") {
+    return normalizeGIFFrameOptions(undefined, undefined);
+  }
+  return normalizeGIFFrameOptions(
+    window.localStorage.getItem(IMAGE_GIF_FRAME_COUNT_STORAGE_KEY),
+    window.localStorage.getItem(IMAGE_GIF_FRAME_DURATION_STORAGE_KEY),
+  );
+}
+
+function gifFramesForTurn(turn: { outputFormat?: ImageOutputFormat; gifFrameCount?: number; gifFrameDurationMs?: number }) {
+  if (turn.outputFormat !== "gif") {
+    return undefined;
+  }
+  return normalizeGIFFrameOptions(turn.gifFrameCount, turn.gifFrameDurationMs);
+}
+
 function getStoredImageOutputCompression(): string {
   if (typeof window === "undefined") {
     return "";
@@ -1091,6 +1111,8 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
   const [imageCustomHeight, setImageCustomHeight] = useState(() => getStoredImageSizeSelection().customHeight);
   const [imageOutputFormat, setImageOutputFormat] = useState<ImageOutputFormat>(getStoredImageOutputFormat);
   const [imageOutputCompression, setImageOutputCompression] = useState(getStoredImageOutputCompression);
+  const [gifFrameCount, setGifFrameCount] = useState(() => String(getStoredGIFFrameOptions().frameCount));
+  const [gifFrameDurationMs, setGifFrameDurationMs] = useState(() => String(getStoredGIFFrameOptions().frameDurationMs));
   const [defaultImageVisibility, setDefaultImageVisibility] = useState<ImageVisibility>("private");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isPromptMarketOpen, setIsPromptMarketOpen] = useState(false);
@@ -1528,6 +1550,15 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
     }
     window.localStorage.setItem(IMAGE_OUTPUT_COMPRESSION_STORAGE_KEY, String(normalizedCompression));
   }, [imageOutputCompression, imageOutputFormat]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const frames = normalizeGIFFrameOptions(gifFrameCount, gifFrameDurationMs);
+    window.localStorage.setItem(IMAGE_GIF_FRAME_COUNT_STORAGE_KEY, String(frames.frameCount));
+    window.localStorage.setItem(IMAGE_GIF_FRAME_DURATION_STORAGE_KEY, String(frames.frameDurationMs));
+  }, [gifFrameCount, gifFrameDurationMs]);
 
   useEffect(() => {
     if (selectedConversationId && !conversations.some((conversation) => conversation.id === selectedConversationId)) {
@@ -2158,6 +2189,7 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
           taskOutputFormat === undefined
             ? undefined
             : imageOutputCompressionForModel(activeTurn.model, taskOutputFormat, activeTurn.outputCompression);
+        const taskGifFrames = gifFramesForTurn({ ...activeTurn, outputFormat: taskOutputFormat });
         const taskImageResolution =
           supportsStructuredImageParameters(activeTurn.model) && activeTurnSizeRequest.selection?.resolution !== "auto"
             ? activeTurnSizeRequest.selection?.resolution
@@ -2206,7 +2238,7 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
               taskImageResolution,
               taskOutputFormat,
               taskOutputCompression,
-              undefined,
+              taskGifFrames ? { gifFrames: taskGifFrames } : undefined,
               conversationId,
               fallbackReferenceImage,
             );
@@ -2223,7 +2255,7 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
             taskImageResolution,
             taskOutputFormat,
             taskOutputCompression,
-            undefined,
+            taskGifFrames ? { gifFrames: taskGifFrames } : undefined,
             conversationId,
             fallbackReferenceImage,
           );
@@ -2834,6 +2866,12 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
         quality: undefined,
         outputFormat: effectiveOutputFormat,
         outputCompression: effectiveImageMode === "chat" ? undefined : effectiveOutputCompression,
+        ...(effectiveOutputFormat === "gif"
+          ? (() => {
+              const frames = normalizeGIFFrameOptions(gifFrameCount, gifFrameDurationMs);
+              return { gifFrameCount: frames.frameCount, gifFrameDurationMs: frames.frameDurationMs };
+            })()
+          : {}),
         visibility: effectiveImageMode === "chat" ? "private" : defaultImageVisibility,
         images: Array.from({ length: requestedCount }, (_, index): StoredImage => {
           const imageId = `${turnId}-${index}`;
@@ -2907,6 +2945,10 @@ function ImagePageContent({ session }: { session: NonNullable<ReturnType<typeof 
         imageCustomHeight={imageCustomHeight}
         imageOutputFormat={imageOutputFormat}
         imageOutputCompression={imageOutputCompression}
+        gifFrameCount={gifFrameCount}
+        gifFrameDurationMs={gifFrameDurationMs}
+        onGifFrameCountChange={setGifFrameCount}
+        onGifFrameDurationMsChange={setGifFrameDurationMs}
         highResolutionHint={highResolutionHint}
         billingSummary={billingSummary}
         estimatedBillingUnits={estimatedBillingUnits}

@@ -342,14 +342,14 @@ export function ImageResults({
 
   if (!selectedConversation) {
     return (
-      <div className="flex w-full flex-col gap-12 pb-12 text-left">
-        <div className="flex flex-col gap-6">
+      <div className="flex w-full flex-col gap-6 pb-8 text-left">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <span className="kicker">Studio</span>
-            <h1 className="font-serif text-[2.25rem] leading-[1.1] font-medium tracking-tight text-foreground sm:text-[2.5rem]">
+            <h1 className="font-serif text-[1.75rem] leading-[1.15] font-medium tracking-tight text-foreground sm:text-[2rem]">
               把想法，印成图像。
             </h1>
-            <p className="max-w-[560px] text-sm leading-6 text-muted-foreground">
+            <p className="max-w-[560px] text-sm leading-5 text-muted-foreground">
               写下画面描述开始创作，或从下方灵感预设套用一组真实案例。
             </p>
           </div>
@@ -357,11 +357,11 @@ export function ImageResults({
         </div>
 
         <section className="flex flex-col">
-          <div className="flex items-end justify-between gap-4 border-b border-rule-strong pb-2">
-            <h2 className="font-serif text-xl leading-tight font-medium text-foreground">灵感预设</h2>
+          <div className="flex items-end justify-between gap-4 border-b border-rule-strong pb-1.5">
+            <h2 className="font-serif text-lg leading-tight font-medium text-foreground">灵感预设</h2>
             <span className="num text-xs text-muted-foreground">{promptPresets.length} 组 · 点选即套用</span>
           </div>
-          <div className="hide-scrollbar flex gap-6 overflow-x-auto pt-5 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
+          <div className="hide-scrollbar flex gap-5 overflow-x-auto pt-3 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
             {promptPresets.map((preset) => (
               <button
                 key={preset.id}
@@ -370,14 +370,14 @@ export function ImageResults({
                 onClick={() => void onApplyPromptPreset(preset)}
                 aria-label={`套用预设：${preset.title}`}
               >
-                <div className="aspect-[3/2] overflow-hidden rounded-sm border border-border bg-secondary transition-colors group-hover:border-ink-4/70">
+                <div className="aspect-[16/9] overflow-hidden rounded-sm border border-border bg-secondary transition-colors group-hover:border-ink-4/70">
                   <img src={preset.imageSrc} alt={preset.title} loading="lazy" className="h-full w-full object-cover" />
                 </div>
-                <div className="mt-3 truncate font-serif text-[17px] leading-6 text-foreground underline-offset-4 decoration-1 group-hover:underline">
+                <div className="mt-2 truncate font-serif text-[16px] leading-5 text-foreground underline-offset-4 decoration-1 group-hover:underline">
                   {preset.title}
                 </div>
                 <div className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-muted-foreground">{preset.hint}</div>
-                <div className="num mt-1.5 text-[11px] leading-4 text-muted-foreground/80">
+                <div className="num mt-1 text-[11px] leading-4 text-muted-foreground/80">
                   {preset.size || "Auto"} · {preset.count} 张
                 </div>
               </button>

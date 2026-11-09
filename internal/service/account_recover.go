@@ -782,7 +782,7 @@ func (r *AccountRecovery) runItem(ctx context.Context, jobID, itemID, email stri
 			return
 		}
 		if code != "" {
-			r.finishOTP(jobID, itemID, session, code)
+			r.finishAutoOTP(ctx, jobID, itemID, session, email, creds, since, seen, code, wait)
 			return
 		}
 		fetchErr = err
@@ -861,6 +861,64 @@ func (r *AccountRecovery) finishOTP(jobID, itemID string, session *recoverySessi
 	token := r.accounts.AccountTokenByEmail(session.email)
 	final := r.ingest(token, session.email, at, st)
 	r.succeed(jobID, itemID, session.email, "email_otp", final)
+}
+
+// recoveryWrongCodeRetries bounds how many newer codes the auto path tries
+// after upstream rejects a code as wrong.
+const recoveryWrongCodeRetries = 3
+
+// isWrongOTPError reports whether upstream rejected the code itself (as
+// opposed to a session or network failure), so a newer mail may still work.
+func isWrongOTPError(err error) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "wrong_email_otp_code") || strings.Contains(text, "wrong code") || strings.Contains(text, "invalid_otp")
+}
+
+// finishAutoOTP validates an automatically fetched code. When several login
+// mails arrive for one attempt (an earlier challenge voided by a later one),
+// the first code read can be stale; on a wrong-code rejection it marks that
+// code as seen and waits for a different, newer code on the same session.
+func (r *AccountRecovery) finishAutoOTP(ctx context.Context, jobID, itemID string, session *recoverySession, email string, creds map[string]any, since time.Time, seen map[string]struct{}, code string, wait time.Duration) {
+	r.mu.Lock()
+	delete(r.pending, itemID)
+	r.mu.Unlock()
+	defer closeSession(session)
+	retryWait := wait
+	if retryWait <= 0 || retryWait > 45*time.Second {
+		retryWait = 45 * time.Second
+	}
+	var lastErr error
+	for try := 0; try <= recoveryWrongCodeRetries; try++ {
+		r.stage(jobID, itemID, "校验验证码")
+		at, st, err := r.validateFn(session, code)
+		if err == nil {
+			token := r.accounts.AccountTokenByEmail(session.email)
+			final := r.ingest(token, session.email, at, st)
+			r.succeed(jobID, itemID, session.email, "email_otp", final)
+			return
+		}
+		lastErr = err
+		if !isWrongOTPError(err) || try == recoveryWrongCodeRetries {
+			break
+		}
+		seen[recoverySeenCodeKey(code)] = struct{}{}
+		r.stage(jobID, itemID, "验证码已失效，等待更新的验证码")
+		next, fetchErr := r.fetchFn(ctx, email, creds, since, seen, retryWait)
+		if ctx.Err() != nil {
+			return
+		}
+		if next == "" {
+			if fetchErr != nil {
+				lastErr = fmt.Errorf("%w；重新收码失败: %v", err, fetchErr)
+			}
+			break
+		}
+		code = next
+	}
+	r.fail(jobID, itemID, session.email, "验证码登录失败: "+lastErr.Error())
 }
 
 // ingest rotates renewed tokens into the pool.
@@ -961,8 +1019,11 @@ func (r *AccountRecovery) defaultStartOTP(ctx context.Context, email string) (*r
 			return fail(errors.New("切换邮箱验证码登录失败（passwordless/send-otp）"))
 		}
 	} else if mode != "passwordless_login" && mode != "passwordless_signup" {
-		if err := flow.sendOTP(registerAuthBase + "/email-verification"); err != nil {
-			if !flow.resendOTP(registerAuthBase + "/email-verification") {
+		// Existing accounts resend first: send creates a new challenge and
+		// voids the code already in flight, which left two login mails per
+		// attempt and made the first one read a stale code.
+		if !flow.resendOTP(registerAuthBase + "/email-verification") {
+			if err := flow.sendOTP(registerAuthBase + "/email-verification"); err != nil {
 				return fail(fmt.Errorf("发送验证码失败: %w", err))
 			}
 		}

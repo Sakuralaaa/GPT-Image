@@ -69,21 +69,24 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-8 px-5 sm:px-8">
-        <NavLink to="/dashboard" className="font-serif text-[22px] leading-none font-medium tracking-tight whitespace-nowrap text-foreground">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-8 px-5 sm:px-8 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
+        <NavLink
+          to="/dashboard"
+          className="justify-self-start font-serif text-[22px] leading-none font-medium tracking-tight whitespace-nowrap text-foreground"
+        >
           {APP_NAME}
         </NavLink>
-        <nav className="hidden min-w-0 flex-1 items-center gap-6 xl:flex">
+        <nav className="hidden items-center justify-center gap-5 lg:flex xl:gap-6">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.path} to={item.path} className={({ isActive }) => linkClass(isActive)}>
+            <NavLink key={item.path} to={item.path} className={({ isActive }) => cn(linkClass(isActive), "whitespace-nowrap")}>
               {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="ml-auto hidden xl:block">{utilities}</div>
+        <div className="hidden justify-self-end lg:block">{utilities}</div>
         <button
           type="button"
-          className="ml-auto flex items-center gap-2 text-sm text-foreground xl:hidden"
+          className="ml-auto flex items-center gap-2 text-sm text-foreground lg:hidden"
           onClick={() => setOpen((value) => !value)}
           aria-label={open ? "关闭菜单" : "打开菜单"}
         >
@@ -92,7 +95,7 @@ export function TopNav() {
         </button>
       </div>
       {open ? (
-        <div className="border-t border-border bg-background xl:hidden">
+        <div className="border-t border-border bg-background lg:hidden">
           <nav className="mx-auto grid max-w-[1280px] grid-cols-2 gap-x-8 px-5 py-4 sm:grid-cols-3 sm:px-8">
             {NAV_ITEMS.map((item) => (
               <NavLink

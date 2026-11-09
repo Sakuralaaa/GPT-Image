@@ -295,12 +295,26 @@ func parseRecoveryMailTime(value any) time.Time {
 // recoveryCodeFreshSkew tolerates clock drift between mail servers and us.
 const recoveryCodeFreshSkew = 30 * time.Second
 
+// recoveryCodeSettle is how long the fetcher keeps polling after the first
+// fresh code shows up, so a second login mail sent for the same attempt
+// (which voids the first) wins over the earlier one.
+const recoveryCodeSettle = 8 * time.Second
+
+// recoverySeenCodeKey marks a code upstream already rejected.
+func recoverySeenCodeKey(code string) string {
+	return "code:" + strings.TrimSpace(code)
+}
+
 // freshCode returns the newest code among messages received after since (or
-// unseen messages when a message carries no timestamp).
+// unseen messages when a message carries no timestamp), skipping codes
+// already rejected.
 func freshCode(messages []recoveryMailMessage, since time.Time, seen map[string]struct{}) string {
 	var best recoveryMailMessage
 	for _, m := range messages {
 		if m.Code == "" {
+			continue
+		}
+		if _, rejected := seen[recoverySeenCodeKey(m.Code)]; rejected {
 			continue
 		}
 		if !m.ReceivedAt.IsZero() {
@@ -386,14 +400,25 @@ func (r *AccountRecovery) defaultFetchCode(ctx context.Context, email string, cr
 	}
 	deadline := time.Now().Add(wait)
 	var lastErr error
+	found := ""
+	var settleUntil time.Time
 	for {
 		messages, err := r.readChannelMessages(ctx, route, email, creds)
 		if err != nil {
 			lastErr = err
 		} else if code := freshCode(messages, since, seen); code != "" {
-			return code, nil
+			if found == "" {
+				settleUntil = time.Now().Add(r.codeSettle())
+			}
+			found = code
+		}
+		if found != "" && !time.Now().Before(settleUntil) {
+			return found, nil
 		}
 		if time.Now().After(deadline) {
+			if found != "" {
+				return found, nil
+			}
 			if lastErr != nil {
 				return "", fmt.Errorf("[%s] %w", route.Channel, lastErr)
 			}
@@ -405,6 +430,14 @@ func (r *AccountRecovery) defaultFetchCode(ctx context.Context, email string, cr
 		case <-time.After(r.pollInterval()):
 		}
 	}
+}
+
+func (r *AccountRecovery) codeSettle() time.Duration {
+	if r.fetchInterval > 0 {
+		// Tests poll fast; keep the settle window proportional.
+		return 2 * r.fetchInterval
+	}
+	return recoveryCodeSettle
 }
 
 func (r *AccountRecovery) pollInterval() time.Duration {

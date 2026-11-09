@@ -10,6 +10,7 @@ import {
   isImageModel,
   isImageOutputFormat,
   isImageQuality,
+  normalizeGIFFrameOptions,
   supportsImageOutputCompression,
   type ImageModel,
   type ImageOutputFormat,
@@ -70,6 +71,8 @@ export type ImageTurn = {
   quality?: ImageQuality;
   outputFormat?: ImageOutputFormat;
   outputCompression?: number;
+  gifFrameCount?: number;
+  gifFrameDurationMs?: number;
   visibility?: ImageVisibility;
   images: StoredImage[];
   createdAt: string;
@@ -349,6 +352,12 @@ function normalizeTurn(turn: ImageTurn & Record<string, unknown>): ImageTurn {
       isImageOutputFormat(turn.outputFormat) && supportsImageOutputCompression(turn.outputFormat)
         ? normalizeOutputCompression(turn.outputCompression)
         : undefined,
+    ...(turn.outputFormat === "gif"
+      ? (() => {
+          const frames = normalizeGIFFrameOptions(turn.gifFrameCount, turn.gifFrameDurationMs);
+          return { gifFrameCount: frames.frameCount, gifFrameDurationMs: frames.frameDurationMs };
+        })()
+      : {}),
     visibility,
     images,
     createdAt: String(turn.createdAt || new Date().toISOString()),

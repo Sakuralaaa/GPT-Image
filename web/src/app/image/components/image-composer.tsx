@@ -58,6 +58,11 @@ import {
   usesOfficialImageRoute,
   type ImageModel,
   type ImageOutputFormat,
+  GIF_FRAME_COUNT_MAX,
+  GIF_FRAME_COUNT_MIN,
+  GIF_FRAME_DURATION_MAX_MS,
+  GIF_FRAME_DURATION_MIN_MS,
+  normalizeGIFFrameOptions,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +79,10 @@ type ImageComposerProps = {
   imageCustomHeight: string;
   imageOutputFormat: ImageOutputFormat;
   imageOutputCompression: string;
+  gifFrameCount: string;
+  gifFrameDurationMs: string;
+  onGifFrameCountChange: (value: string) => void;
+  onGifFrameDurationMsChange: (value: string) => void;
   highResolutionHint?: ReactNode;
   billingSummary: string;
   estimatedBillingUnits: number;
@@ -265,6 +274,10 @@ export function ImageComposer({
   imageCustomHeight,
   imageOutputFormat,
   imageOutputCompression,
+  gifFrameCount,
+  gifFrameDurationMs,
+  onGifFrameCountChange,
+  onGifFrameDurationMsChange,
   highResolutionHint,
   billingSummary,
   estimatedBillingUnits,
@@ -297,7 +310,7 @@ export function ImageComposer({
   const [isAspectRatioMenuOpen, setIsAspectRatioMenuOpen] = useState(false);
   const [isResolutionMenuOpen, setIsResolutionMenuOpen] = useState(false);
   const [isImageSettingsOpen, setIsImageSettingsOpen] = useState(false);
-  const [promptAreaHeight, setPromptAreaHeight] = useState(() => (placement === "inline" ? 128 : PROMPT_AREA_DEFAULT_HEIGHT));
+  const [promptAreaHeight, setPromptAreaHeight] = useState(() => (placement === "inline" ? 88 : PROMPT_AREA_DEFAULT_HEIGHT));
   const [isPromptAreaResizing, setIsPromptAreaResizing] = useState(false);
   const [isReferenceImageDragActive, setIsReferenceImageDragActive] = useState(false);
   const composerPanelRef = useRef<HTMLDivElement>(null);
@@ -938,6 +951,42 @@ export function ImageComposer({
                                   className="h-8 w-[118px] text-right text-[13px]"
                                 />
                               </label>
+                            ) : null}
+                            {imageOutputFormat === "gif" ? (
+                              <>
+                                <label className={imageSettingsRowClass}>
+                                  <span className={imageSettingsLabelClass}>帧数</span>
+                                  <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={GIF_FRAME_COUNT_MIN}
+                                    max={GIF_FRAME_COUNT_MAX}
+                                    step="1"
+                                    value={gifFrameCount}
+                                    onChange={(event) => onGifFrameCountChange(event.target.value)}
+                                    onBlur={() => onGifFrameCountChange(String(normalizeGIFFrameOptions(gifFrameCount, gifFrameDurationMs).frameCount))}
+                                    placeholder={`${GIF_FRAME_COUNT_MIN}-${GIF_FRAME_COUNT_MAX}`}
+                                    aria-label="GIF 帧数"
+                                    className="h-8 w-[118px] text-right text-[13px]"
+                                  />
+                                </label>
+                                <label className={imageSettingsRowClass}>
+                                  <span className={imageSettingsLabelClass}>帧间隔 ms</span>
+                                  <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={GIF_FRAME_DURATION_MIN_MS}
+                                    max={GIF_FRAME_DURATION_MAX_MS}
+                                    step="10"
+                                    value={gifFrameDurationMs}
+                                    onChange={(event) => onGifFrameDurationMsChange(event.target.value)}
+                                    onBlur={() => onGifFrameDurationMsChange(String(normalizeGIFFrameOptions(gifFrameCount, gifFrameDurationMs).frameDurationMs))}
+                                    placeholder={`${GIF_FRAME_DURATION_MIN_MS}-${GIF_FRAME_DURATION_MAX_MS}`}
+                                    aria-label="GIF 帧间隔（毫秒）"
+                                    className="h-8 w-[118px] text-right text-[13px]"
+                                  />
+                                </label>
+                              </>
                             ) : null}
                           </>
                         ) : null}
