@@ -17,14 +17,16 @@ type fakeOutlookEmail struct {
 	claims   int
 	reports  map[string]map[string]any
 	messages []any
+	moved    []map[string]any
 	tagged   []map[string]any
 	tagNames []string
+	groups   []map[string]any
 }
 
 func (f *fakeOutlookEmail) handler(t *testing.T) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/login", "/api/csrf-token", "/api/tags", "/api/accounts/tags":
+		case "/login", "/api/csrf-token", "/api/groups", "/api/tags", "/api/accounts/tags":
 			f.session(t, w, r)
 			return
 		}
@@ -54,6 +56,13 @@ func (f *fakeOutlookEmail) handler(t *testing.T) http.Handler {
 			}
 			f.reports[r.URL.Path] = body
 			_ = json.NewEncoder(w).Encode(map[string]any{"success": true})
+		case "/api/external/accounts":
+			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "accounts": []any{
+				map[string]any{"id": 12, "group_id": 3, "group_name": "微软"},
+			}})
+		case "/api/external/accounts/batch-update-group":
+			f.moved = append(f.moved, body)
+			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "updated_count": 1})
 		case "/api/external/emails":
 			if r.URL.Query().Get("email") != "pool@outlook.com" {
 				t.Errorf("emails query = %s", r.URL.RawQuery)
@@ -103,6 +112,16 @@ func (f *fakeOutlookEmail) session(t *testing.T, w http.ResponseWriter, r *http.
 	case r.URL.Path == "/api/accounts/tags":
 		f.tagged = append(f.tagged, body)
 		_ = json.NewEncoder(w).Encode(map[string]any{"success": true})
+	case r.URL.Path == "/api/groups" && r.Method == http.MethodGet:
+		groups := []any{map[string]any{"id": 3, "name": "微软"}}
+		for _, g := range f.groups {
+			groups = append(groups, g)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "groups": groups})
+	case r.URL.Path == "/api/groups":
+		id := 20 + len(f.groups)
+		f.groups = append(f.groups, map[string]any{"id": id, "name": body["name"], "parent_id": body["parent_id"]})
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "group_id": id})
 	}
 }
 
@@ -174,12 +193,29 @@ func TestRouteOutlookEmailRegisteredAccountUsesRegisterEntry(t *testing.T) {
 	}
 }
 
-func TestOutlookEmailTagsRegisteredAccount(t *testing.T) {
+func TestOutlookEmailScopeByGroupNameAndMoveToDoneGroup(t *testing.T) {
 	fake := &fakeOutlookEmail{}
 	server := httptest.NewServer(fake.handler(t))
 	defer server.Close()
 	cfg := outlookEmailMailConfig(server.URL)
 	entry := cfg["providers"].([]any)[0].(map[string]any)
+	entry["groups"] = "微软"
+	entry["done_name"] = "已注册GPT"
+
+	// Without the login password an empty done group cannot be found.
+	mailbox, err := createRegisterMailbox(cfg, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ids, _ := fake.started[0]["group_ids"].([]any); len(ids) != 1 || int(ids[0].(float64)) != 3 {
+		t.Fatalf("start scope = %#v", fake.started[0])
+	}
+	reportRegisterMailboxResult(cfg, mailbox, context.Background(), nil)
+	if len(fake.moved) != 0 {
+		t.Fatalf("moved without resolvable group: %#v", fake.moved)
+	}
+
+	// With the password the group is created under the scope group once.
 	entry["login_password"] = "web-pass"
 	for i := 0; i < 2; i++ {
 		mailbox, err := createRegisterMailbox(cfg, "")
@@ -188,16 +224,29 @@ func TestOutlookEmailTagsRegisteredAccount(t *testing.T) {
 		}
 		reportRegisterMailboxResult(cfg, mailbox, context.Background(), nil)
 	}
-	if len(fake.tagNames) != 1 || fake.tagNames[0] != outlookEmailDefaultTag {
+	if len(fake.groups) != 1 || fake.groups[0]["name"] != "已注册GPT" || int(fake.groups[0]["parent_id"].(float64)) != 3 {
+		t.Fatalf("groups = %#v", fake.groups)
+	}
+	if len(fake.moved) != 2 || int(fake.moved[1]["group_id"].(float64)) != 20 {
+		t.Fatalf("moved = %#v", fake.moved)
+	}
+	if len(fake.tagNames) != 1 || fake.tagNames[0] != "已注册GPT" {
 		t.Fatalf("tag created = %#v", fake.tagNames)
 	}
 	if len(fake.tagged) != 2 || int(fake.tagged[1]["tag_id"].(float64)) != 10 || fake.tagged[1]["action"] != "add" {
 		t.Fatalf("tagged = %#v", fake.tagged)
 	}
-	// Failed registrations are not tagged.
-	mailbox, _ := createRegisterMailbox(cfg, "")
+
+	// Failed registrations stay in place; numeric IDs skip lookups.
+	entry["done_name"] = "7"
+	mailbox, _ = createRegisterMailbox(cfg, "")
 	reportRegisterMailboxResult(cfg, mailbox, context.Background(), errors.New("x"))
-	if len(fake.tagged) != 2 {
-		t.Fatalf("failed run tagged: %#v", fake.tagged)
+	if len(fake.moved) != 2 || len(fake.tagged) != 2 {
+		t.Fatalf("failed run marked: %#v %#v", fake.moved, fake.tagged)
+	}
+	mailbox, _ = createRegisterMailbox(cfg, "")
+	reportRegisterMailboxResult(cfg, mailbox, context.Background(), nil)
+	if int(fake.moved[2]["group_id"].(float64)) != 7 || len(fake.tagNames) != 1 {
+		t.Fatalf("numeric move = %#v", fake.moved[2])
 	}
 }

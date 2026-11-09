@@ -55,7 +55,7 @@ export function RegisterCard() {
       ...(type === "moemail" ? { api_base: "", api_key: "", domain: [], expiry_time: 0 } : {}),
       ...(type === "inbucket" ? { api_base: "", domain: [], random_subdomain: true } : {}),
       ...(type === "yyds_mail" ? { api_base: "https://maliapi.215.im/v1", api_key: "", domain: [], subdomain: "", wildcard: false } : {}),
-      ...(type === "outlook_email" ? { api_base: "", api_key: "", project_key: "gpt-image", group_ids: "", login_password: "", tag_name: "已注册GPT" } : {}),
+      ...(type === "outlook_email" ? { api_base: "", api_key: "", project_key: "gpt-image", groups: "", done_name: "已注册GPT", login_password: "" } : {}),
     });
   };
 
@@ -234,18 +234,18 @@ export function RegisterCard() {
                             <Input value={String(provider.project_key || "")} onChange={(event) => updateProvider(index, { project_key: event.target.value })} placeholder="gpt-image" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-sm text-stone-700">分组 ID（可选，逗号分隔）</label>
-                            <Input value={String(provider.group_ids || "")} onChange={(event) => updateProvider(index, { group_ids: event.target.value })} placeholder="留空为全部邮箱" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                            <label className="text-sm text-stone-700">领取分组（名称或 ID，逗号分隔）</label>
+                            <Input value={String(provider.groups || "")} onChange={(event) => updateProvider(index, { groups: event.target.value })} placeholder="如：微软；留空为全部邮箱" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-sm text-stone-700">Web 登录密码（可选，用于打标签）</label>
-                            <Input type="password" value={String(provider.login_password || "")} onChange={(event) => updateProvider(index, { login_password: event.target.value })} placeholder="留空则不打标签" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                            <label className="text-sm text-stone-700">成功分组 / 标签名</label>
+                            <Input value={String(provider.done_name || "")} onChange={(event) => updateProvider(index, { done_name: event.target.value })} placeholder="已注册GPT；留空不标记" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-sm text-stone-700">成功标签</label>
-                            <Input value={String(provider.tag_name || "")} onChange={(event) => updateProvider(index, { tag_name: event.target.value })} placeholder="已注册GPT" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
+                            <label className="text-sm text-stone-700">Web 登录密码（可选）</label>
+                            <Input type="password" value={String(provider.login_password || "")} onChange={(event) => updateProvider(index, { login_password: event.target.value })} placeholder="用于打标签、自动建分组" className="h-10 rounded-xl border-stone-200 bg-white" disabled={config.enabled} />
                           </div>
-                          <p className="text-xs text-stone-500 md:col-span-2">从 outlookEmail 项目池领取邮箱注册，完成后回报成功或失败；已成功的邮箱不会再分配，填了登录密码会自动打上成功标签（标签不存在会自动创建）。失败邮箱需在 outlookEmail 里重置后才会重新领取。</p>
+                          <p className="text-xs text-stone-500 md:col-span-2">从 outlookEmail 项目池领取邮箱注册，完成后回报成功或失败；已成功的邮箱不会再分配，并移入同名分组、打上同名标签。打标签和自动建分组（建在第一个领取分组下）需要填 Web 登录密码；不填时只移分组，且分组需先手动建好或直接填分组 ID。失败邮箱需在 outlookEmail 里重置后才会重新领取。</p>
                         </>
                       ) : null}
                       {type === "yyds_mail" ? (

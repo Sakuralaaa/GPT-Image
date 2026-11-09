@@ -508,6 +508,60 @@ func TestStreamResponsesImageUsesCodeInterpreterAssetDownload(t *testing.T) {
 	}
 }
 
+func TestStreamResponsesImageFallsBackToInterpreterAssetsForUnknownPointer(t *testing.T) {
+	gifBytes := []byte("GIF89a\x01\x00\x01\x00\x00\x00\x00;")
+	conversationPolls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/":
+			_, _ = w.Write([]byte(`<html data-build="build-1"><script src="/backend-api/sentinel/sdk.js"></script></html>`))
+		case r.Method == http.MethodPost && r.URL.Path == "/backend-api/sentinel/chat-requirements/prepare":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"prepare_token":"prep-token","proofofwork":{"required":false},"turnstile":{"required":false},"arkose":{"required":false}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/backend-api/sentinel/chat-requirements/finalize":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"token":"req-token","so_token":""}`))
+		case r.Method == http.MethodPost && r.URL.Path == officialPreparePath:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"conduit_token":"conduit-token"}`))
+		case r.Method == http.MethodPost && r.URL.Path == officialStreamPath:
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = w.Write([]byte(`data: {"v":{"message":{"author":{"role":"tool"},"content":{"content_type":"multimodal_text","parts":[{"content_type":"image_asset_pointer","asset_pointer":"sediment://716a7252b8f05ca"}]},"metadata":{"async_task_type":"image_gen"}},"conversation_id":"conv-gif"}}` + "\n\n"))
+			_, _ = w.Write([]byte("data: {\"type\":\"message_stream_complete\",\"conversation_id\":\"conv-gif\"}\n\n"))
+		case r.Method == http.MethodGet && r.URL.Path == "/backend-api/conversation/conv-gif":
+			conversationPolls++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"mapping":{"n1":{"message":{"id":"msg-gif","create_time":2,"author":{"role":"assistant"},"content":{"content_type":"multimodal_text","assets":[{"asset_id":"file_gif","mime_type":"image/gif"}]},"metadata":{"async_task_type":"code_interpreter"}}}}}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/backend-api/conversation/conv-gif/interpreter/download":
+			if got := r.URL.Query().Get("asset_id"); got != "file_gif" {
+				t.Fatalf("asset_id = %q", got)
+			}
+			w.Header().Set("Content-Type", "image/gif")
+			_, _ = w.Write(gifBytes)
+		case strings.HasPrefix(r.URL.Path, "/backend-api/files/download/"):
+			t.Fatalf("unexpected files download for unknown pointer: %s", r.URL.Path)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestBackendClient(server)
+	events, errCh := client.StreamResponsesImage(context.Background(), ResponsesImageRequest{Prompt: "gif", Model: "gpt-image-2"})
+	var results []ResponsesImageEvent
+	for event := range events {
+		if event.Result != "" {
+			results = append(results, event)
+		}
+	}
+	if err := <-errCh; err != nil {
+		t.Fatalf("StreamResponsesImage() error = %v", err)
+	}
+	if conversationPolls != 1 || len(results) != 1 || results[0].OutputFormat != "gif" || results[0].Result != base64.StdEncoding.EncodeToString(gifBytes) {
+		t.Fatalf("polls=%d results=%#v", conversationPolls, results)
+	}
+}
+
 func TestStreamResponsesImageIgnoresHistoricalInterpreterAssets(t *testing.T) {
 	const png1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ioAAAAASUVORK5CYII="
 	imageBytes, err := base64.StdEncoding.DecodeString(png1x1)

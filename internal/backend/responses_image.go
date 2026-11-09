@@ -1559,6 +1559,19 @@ func (c *Client) resolveOfficialImageResults(ctx context.Context, request Respon
 	}
 	imageFileIDs := officialImageFileIDs(fileIDs, sedimentIDs)
 	if len(imageFileIDs) == 0 {
+		if unknown := officialImageUnknownPointerIDs(fileIDs, sedimentIDs); len(unknown) > 0 {
+			// Pointers that the files API cannot serve (seen with code
+			// interpreter output such as GIFs): fetch the conversation and
+			// download the interpreter's own assets instead.
+			assets, err := c.pollOfficialInterpreterAssets(ctx, conversationID)
+			if err != nil {
+				return nil, err
+			}
+			if len(assets) == 0 {
+				return nil, fmt.Errorf("official image result has no downloadable file (pointers: %s)", strings.Join(unknown, ", "))
+			}
+			return c.resolveOfficialInterpreterAssetResults(ctx, request, assets, conversationID, messageID)
+		}
 		if strings.TrimSpace(text) != "" {
 			return []ResponsesImageEvent{{
 				Type:           "image_text_response",
@@ -1619,12 +1632,77 @@ func (c *Client) resolveOfficialInterpreterAssetResults(ctx context.Context, req
 	return results, nil
 }
 
+// officialImageFileIDs returns the pointer IDs the files download API
+// accepts; it only serves IDs starting with "file-" or "file_".
 func officialImageFileIDs(fileIDs, sedimentIDs []string) []string {
-	out := appendUniqueString(nil, filterOfficialImageIDs(fileIDs)...)
-	for _, sedimentID := range sedimentIDs {
-		out = appendUniqueString(out, sedimentID)
+	var out []string
+	for _, id := range append(filterOfficialImageIDs(fileIDs), filterOfficialImageIDs(sedimentIDs)...) {
+		if isOfficialDownloadableFileID(id) {
+			out = appendUniqueString(out, id)
+		}
 	}
 	return out
+}
+
+func officialImageUnknownPointerIDs(fileIDs, sedimentIDs []string) []string {
+	var out []string
+	for _, id := range append(filterOfficialImageIDs(fileIDs), filterOfficialImageIDs(sedimentIDs)...) {
+		if !isOfficialDownloadableFileID(id) {
+			out = appendUniqueString(out, id)
+		}
+	}
+	return out
+}
+
+func isOfficialDownloadableFileID(id string) bool {
+	return strings.HasPrefix(id, "file-") || strings.HasPrefix(id, "file_")
+}
+
+// pollOfficialInterpreterAssets reads the conversation a few times until the
+// latest code interpreter message exposes image assets.
+func (c *Client) pollOfficialInterpreterAssets(ctx context.Context, conversationID string) ([]officialInterpreterAsset, error) {
+	if strings.TrimSpace(conversationID) == "" {
+		return nil, nil
+	}
+	for attempt := 1; ; attempt++ {
+		data, err := c.fetchOfficialConversation(ctx, conversationID)
+		delay := 4 * time.Second
+		if retry, ok := err.(officialConversationPollRetryError); ok {
+			delay = retry.Delay
+		} else if err != nil {
+			return nil, err
+		} else if assets := officialConversationInterpreterAssets(data, conversationID); len(assets) > 0 {
+			return assets, nil
+		}
+		if attempt >= officialInterpreterAssetPollAttempts {
+			return nil, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+}
+
+const officialInterpreterAssetPollAttempts = 8
+
+// officialConversationInterpreterAssets returns the image assets of the most
+// recent code interpreter message in a conversation.
+func officialConversationInterpreterAssets(data map[string]any, conversationID string) []officialInterpreterAsset {
+	var latest []officialInterpreterAsset
+	bestTime := -1.0
+	for _, raw := range util.StringMap(data["mapping"]) {
+		message := util.StringMap(util.StringMap(raw)["message"])
+		assets := officialInterpreterAssetsFromEvent(map[string]any{"message": message}, conversationID)
+		if len(assets) == 0 {
+			continue
+		}
+		if messageTime := officialImageMessageTimestamp(message); messageTime > bestTime {
+			latest, bestTime = assets, messageTime
+		}
+	}
+	return latest
 }
 
 func filterOfficialImageIDs(values []string) []string {
@@ -1686,6 +1764,14 @@ func (e officialConversationPollRetryError) Error() string {
 }
 
 func (c *Client) fetchOfficialConversationImageResult(ctx context.Context, conversationID string, target officialImagePollTarget) (officialConversationPollResult, error) {
+	data, err := c.fetchOfficialConversation(ctx, conversationID)
+	if err != nil {
+		return officialConversationPollResult{}, err
+	}
+	return officialConversationPollResultFromDataForTarget(data, target), nil
+}
+
+func (c *Client) fetchOfficialConversation(ctx context.Context, conversationID string) (map[string]any, error) {
 	path := "/backend-api/conversation/" + conversationID
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+path, nil)
 	for key, value := range c.headers(path, map[string]string{"Accept": "application/json"}) {
@@ -1693,21 +1779,21 @@ func (c *Client) fetchOfficialConversationImageResult(ctx context.Context, conve
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return officialConversationPollResult{}, upstreamTransportError(path, err)
+		return nil, upstreamTransportError(path, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
 		io.Copy(io.Discard, resp.Body)
-		return officialConversationPollResult{}, officialConversationPollRetryError{Delay: officialConversationPollRetryDelay(resp.Header.Get("Retry-After"))}
+		return nil, officialConversationPollRetryError{Delay: officialConversationPollRetryDelay(resp.Header.Get("Retry-After"))}
 	}
 	if err := ensureOK(resp, path); err != nil {
-		return officialConversationPollResult{}, err
+		return nil, err
 	}
 	var data map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return officialConversationPollResult{}, err
+		return nil, err
 	}
-	return officialConversationPollResultFromDataForTarget(data, target), nil
+	return data, nil
 }
 
 func officialConversationPollResultFromData(data map[string]any) officialConversationPollResult {

@@ -25,7 +25,6 @@ const (
 	outlookEmailCallerID       = "gpt-image"
 	outlookEmailLeaseSeconds   = 1800
 	outlookEmailCodeSkew       = 30 * time.Second
-	outlookEmailDefaultTag     = "已注册GPT"
 )
 
 type registerOutlookEmailProvider struct {
@@ -90,8 +89,12 @@ func (p *registerOutlookEmailProvider) CreateMailbox(_ string) (map[string]any, 
 	if name := util.Clean(p.entry["project_name"]); name != "" {
 		startPayload["name"] = name
 	}
-	if groups := outlookEmailGroupIDs(p.entry["group_ids"]); len(groups) > 0 {
-		startPayload["group_ids"] = groups
+	if names := outlookEmailGroupList(p.entry["groups"]); len(names) > 0 {
+		ids, err := p.resolveGroups(names)
+		if err != nil {
+			return nil, err
+		}
+		startPayload["group_ids"] = ids
 	}
 	if body, status, err := p.call(http.MethodPost, "/api/external/projects/start", key, startPayload); err != nil {
 		return nil, fmt.Errorf("outlookEmail 启动项目失败: %w", err)
@@ -221,14 +224,52 @@ func reportRegisterMailboxResult(mailConfig map[string]any, mailbox map[string]a
 	})
 	mailbox["outlook_claim"] = ""
 	if runErr == nil && accountID > 0 {
-		_ = p.tagAccount(accountID)
+		// The success marker names both the tag and the group in outlookEmail.
+		if name := strings.TrimSpace(util.Clean(p.entry["done_name"])); name != "" {
+			_ = p.moveToDoneGroup(accountID, name)
+			if util.ToInt(name, 0) <= 0 { // a numeric marker is a group ID, not a tag name
+				_ = p.tagAccount(accountID, name)
+			}
+		}
 	}
 }
 
-// tagAccount marks a registered mailbox with a tag in the outlookEmail UI.
-// Tags are only exposed by the session API, so this needs the web login
-// password and is skipped when none is configured.
-func (p *registerOutlookEmailProvider) tagAccount(accountID int) error {
+// moveToDoneGroup moves a registered mailbox into the success group (for
+// example a "已注册GPT" child group) so it is easy to tell apart in the
+// outlookEmail UI. Moving uses the API key; the group is auto-created only
+// when the web login password is configured.
+func (p *registerOutlookEmailProvider) moveToDoneGroup(accountID int, target string) error {
+	_, key, _, err := outlookEmailEntryConfig(p.entry)
+	if err != nil {
+		return err
+	}
+	parentID := 0
+	if names := outlookEmailGroupList(p.entry["groups"]); len(names) > 0 {
+		if ids, err := p.resolveGroups(names[:1]); err == nil && len(ids) == 1 {
+			parentID = ids[0]
+		}
+	}
+	groupID, err := p.resolveGroup(target, true, parentID)
+	if err != nil {
+		return err
+	}
+	body, status, err := p.call(http.MethodPost, "/api/external/accounts/batch-update-group", key, map[string]any{
+		"account_ids": []int{accountID},
+		"group_id":    groupID,
+	})
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK || !outlookEmailOK(body) {
+		return fmt.Errorf("outlookEmail 移动分组失败: HTTP %d %s", status, outlookEmailError(body))
+	}
+	return nil
+}
+
+// tagAccount adds the success tag to a registered mailbox. Tags are only
+// exposed by the session API, so this needs the web login password and is
+// skipped when none is configured.
+func (p *registerOutlookEmailProvider) tagAccount(accountID int, tagName string) error {
 	password := util.Clean(p.entry["login_password"])
 	if password == "" {
 		return nil
@@ -237,15 +278,9 @@ func (p *registerOutlookEmailProvider) tagAccount(accountID int) error {
 	if err != nil {
 		return err
 	}
-	tagName := firstNonEmpty(strings.TrimSpace(util.Clean(p.entry["tag_name"])), outlookEmailDefaultTag)
 	sess := &outlookEmailSession{client: p.client, base: base, ua: p.conf.UserAgent}
-	if body, status, err := sess.do(http.MethodPost, "/login", map[string]any{"password": password}); err != nil {
+	if err := sess.login(password); err != nil {
 		return err
-	} else if status != http.StatusOK || !outlookEmailOK(body) {
-		return fmt.Errorf("outlookEmail 登录失败: HTTP %d %s", status, outlookEmailError(body))
-	}
-	if body, status, err := sess.do(http.MethodGet, "/api/csrf-token", nil); err == nil && status == http.StatusOK {
-		sess.csrf = util.Clean(body["csrf_token"])
 	}
 	tagID := 0
 	body, status, err := sess.do(http.MethodGet, "/api/tags", nil)
@@ -284,6 +319,94 @@ func (p *registerOutlookEmailProvider) tagAccount(accountID int) error {
 	}
 	if status != http.StatusOK || !outlookEmailOK(result) {
 		return fmt.Errorf("outlookEmail 打标签失败: HTTP %d %s", status, outlookEmailError(result))
+	}
+	return nil
+}
+
+func (p *registerOutlookEmailProvider) resolveGroups(names []string) ([]int, error) {
+	ids := make([]int, 0, len(names))
+	for _, name := range names {
+		id, err := p.resolveGroup(name, false, 0)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// resolveGroup maps a group name (or numeric ID) to its outlookEmail ID. With
+// the web login password every group is visible and a missing one can be
+// created; without it only groups that already hold accounts can be found.
+func (p *registerOutlookEmailProvider) resolveGroup(name string, create bool, parentID int) (int, error) {
+	name = strings.TrimSpace(name)
+	if id := util.ToInt(name, 0); id > 0 {
+		return id, nil
+	}
+	base, key, _, err := outlookEmailEntryConfig(p.entry)
+	if err != nil {
+		return 0, err
+	}
+	if password := util.Clean(p.entry["login_password"]); password != "" {
+		sess := &outlookEmailSession{client: p.client, base: base, ua: p.conf.UserAgent}
+		if err := sess.login(password); err != nil {
+			return 0, err
+		}
+		body, status, err := sess.do(http.MethodGet, "/api/groups", nil)
+		if err != nil {
+			return 0, err
+		}
+		if status != http.StatusOK || !outlookEmailOK(body) {
+			return 0, fmt.Errorf("outlookEmail 读取分组失败: HTTP %d %s", status, outlookEmailError(body))
+		}
+		for _, group := range util.AsMapSlice(body["groups"]) {
+			if strings.TrimSpace(util.Clean(group["name"])) == name {
+				return util.ToInt(group["id"], 0), nil
+			}
+		}
+		if !create {
+			return 0, fmt.Errorf("outlookEmail 分组不存在: %s", name)
+		}
+		payload := map[string]any{"name": name}
+		if parentID > 0 {
+			payload["parent_id"] = parentID
+		}
+		created, status, err := sess.do(http.MethodPost, "/api/groups", payload)
+		if err != nil {
+			return 0, err
+		}
+		if id := util.ToInt(created["group_id"], 0); status == http.StatusOK && outlookEmailOK(created) && id > 0 {
+			return id, nil
+		}
+		return 0, fmt.Errorf("outlookEmail 创建分组失败: HTTP %d %s", status, outlookEmailError(created))
+	}
+	body, status, err := p.call(http.MethodGet, "/api/external/accounts", key, nil)
+	if err != nil {
+		return 0, err
+	}
+	if status != http.StatusOK || !outlookEmailOK(body) {
+		return 0, fmt.Errorf("outlookEmail 读取账号失败: HTTP %d %s", status, outlookEmailError(body))
+	}
+	for _, account := range util.AsMapSlice(body["accounts"]) {
+		if strings.TrimSpace(util.Clean(account["group_name"])) == name {
+			if id := util.ToInt(account["group_id"], 0); id > 0 {
+				return id, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("outlookEmail 找不到分组「%s」：请填分组 ID，或填写 Web 登录密码以识别空分组并自动创建", name)
+}
+
+func (s *outlookEmailSession) login(password string) error {
+	body, status, err := s.do(http.MethodPost, "/login", map[string]any{"password": password})
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK || !outlookEmailOK(body) {
+		return fmt.Errorf("outlookEmail 登录失败: HTTP %d %s", status, outlookEmailError(body))
+	}
+	if body, status, err := s.do(http.MethodGet, "/api/csrf-token", nil); err == nil && status == http.StatusOK {
+		s.csrf = util.Clean(body["csrf_token"])
 	}
 	return nil
 }
@@ -356,26 +479,22 @@ func outlookEmailError(body map[string]any) string {
 	return firstNonEmpty(util.Clean(body["error"]), util.Clean(body["message"]))
 }
 
-func outlookEmailGroupIDs(value any) []int {
-	var out []int
+func outlookEmailGroupList(value any) []string {
+	var raw []string
 	switch typed := value.(type) {
 	case []any:
 		for _, item := range typed {
-			if id := util.ToInt(item, 0); id > 0 {
-				out = append(out, id)
-			}
+			raw = append(raw, util.Clean(item))
 		}
-	case []int:
-		for _, id := range typed {
-			if id > 0 {
-				out = append(out, id)
-			}
-		}
+	case []string:
+		raw = typed
 	case string:
-		for _, part := range strings.FieldsFunc(typed, func(r rune) bool { return r == ',' || r == ' ' || r == '\n' }) {
-			if id := util.ToInt(part, 0); id > 0 {
-				out = append(out, id)
-			}
+		raw = strings.FieldsFunc(typed, func(r rune) bool { return r == ',' || r == '，' || r == '\n' })
+	}
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
 		}
 	}
 	return out

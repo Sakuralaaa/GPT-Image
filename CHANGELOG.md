@@ -4,8 +4,11 @@
 ## [Unreleased]
 
 ### 新增
-- 注册机新增 outlookEmail 邮箱渠道（`outlook_email`）：通过 outlookEmail 项目接口领取邮箱注册，结束后回报成功/失败/释放，已注册邮箱不再分配；可选填 Web 登录密码，成功后自动打「已注册GPT」标签。
+- 注册机新增 outlookEmail 邮箱渠道（`outlook_email`）：通过 outlookEmail 项目接口领取邮箱注册，结束后回报成功/失败/释放，已注册邮箱不再分配；领取分组可按名称（如「微软」）配置，注册成功后自动移入「已注册GPT」分组并打上同名标签（标签与自动建分组需填 Web 登录密码）。
 - 找回：经 outlookEmail 注册的账号按存储渠道路由到 outlookEmail，找回设置未配置时回退使用注册机的 outlook_email 配置。
+
+### 修复
+- GIF 生图报 `Invalid file_id, expected to start with 'file-' or 'file_'`：上游返回非 `file-`/`file_` 开头的图片指针时不再直接调用文件下载接口，改为读取会话中代码解释器生成的图片资源下载；仍取不到时报错并附上原始指针。
 
 ## [1.0.2] - 2026-11-09
 
