@@ -361,14 +361,16 @@ class SolverPage {
     });
   }
 
-  async invalidate() {
-    await this.withLock(async () => { this.openedAt = 0; });
+  async invalidate(page) {
+    // 只有出错的还是当前页面时才作废，避免一个请求的失败把别人刚重开的页面再关掉
+    await this.withLock(async () => { if (!page || page === this.page) this.openedAt = 0; });
   }
 
   async reopen() {
-    if (this.context) {
-      try { await this.context.close(); } catch (err) { /* ignore */ }
-    }
+    // 旧 context 延迟关闭：并发中还在旧页面上跑的 evaluate 能正常跑完，不会报 Target page closed
+    const old = this.context;
+    if (old) setTimeout(() => { old.close().catch(() => {}); }, 90000);
+    this.context = null;
     this.page = null;
     const contextOptions = {
       locale: LOCALE,
@@ -425,7 +427,7 @@ class SolverPage {
       } catch (err) {
         this.lastError = errText(err);
         if (attempt) throw err;
-        await this.invalidate();
+        await this.invalidate(page);
       }
     }
     throw new Error('unreachable');
