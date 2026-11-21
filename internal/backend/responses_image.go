@@ -823,7 +823,12 @@ func (c *Client) prepareOfficialImageConversation(ctx context.Context, prompt st
 		if len(snippet) > 200 {
 			snippet = snippet[:200]
 		}
-		return "", fmt.Errorf("conversation prepare returned no conduit token for model %q: %s", officialImageModelSlug(request.Model), snippet)
+		// status "ok" with conduit_token null is the prepare-side twin of the
+		// disguised "Model not found" 404: upstream accepted the call but will not
+		// route this account's turn. Cool the account down and let the caller
+		// retry on another one instead of failing the whole request.
+		c.reportImageAccountRejected()
+		return "", ImageAccountRejectedError{Message: fmt.Sprintf("conversation prepare returned no conduit token for model %q: %s", officialImageModelSlug(request.Model), snippet)}
 	}
 	return token, nil
 }

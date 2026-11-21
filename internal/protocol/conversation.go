@@ -255,6 +255,11 @@ func NewImageGenerationError(message string) *ImageGenerationError {
 
 const maxTransientImageStreamAttempts = 3
 
+// maxRejectedImageAccountAttempts caps how many times one image is retried on a
+// different account after upstream rejected the account (prepare returned no
+// conduit token, or the disguised "Model not found" 404).
+const maxRejectedImageAccountAttempts = 3
+
 func isTransientImageStreamErrorMessage(message string) bool {
 	lower := strings.ToLower(strings.TrimSpace(message))
 	if lower == "" {
@@ -588,6 +593,7 @@ func noopImageOutputSlotRelease() {}
 func (e *Engine) runSingleImageOutput(ctx context.Context, out chan<- ImageOutput, request ConversationRequest, index int) imageRunResult {
 	result := imageRunResult{}
 	transientAttempts := 0
+	rejectedAttempts := 0
 	session, hasSession := e.activeImageConversationSession(request)
 	preferredToken := ""
 	if hasSession {
@@ -731,6 +737,18 @@ func (e *Engine) runSingleImageOutput(ctx context.Context, out chan<- ImageOutpu
 				e.Accounts.MarkImageResult(token, false)
 			}
 			result.lastError = err.Error()
+			var rejectedErr backend.ImageAccountRejectedError
+			if errors.As(err, &rejectedErr) && !emittedForToken && rejectedAttempts < maxRejectedImageAccountAttempts {
+				// The account was put on a short cooldown by the backend, so the
+				// next lease lands on a different account.
+				rejectedAttempts++
+				if useSession {
+					e.invalidateImageConversationSession(request)
+					hasSession = false
+					preferredToken = ""
+				}
+				return true
+			}
 			if useSession {
 				e.invalidateImageConversationSession(request)
 				hasSession = false
